@@ -18,10 +18,10 @@
 #     -> correct each gene on each plate by the respective genes IC_correction factor for the respective plate
 # 6) Relatively quantify the expression of each of the genes of interest (GOI) in relation to the average of the housekeeping genes (HKG)
 #     (herefore the above estimated efficiencies are used)
-#     ! N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample 
+#     ! N = K*(Eff_ref)^Cq_ref/(Eff_sample)^Cq_sample (for Efficiency as between 1 and 2)
 #     for the HKG first [(1+Eff_ref)^Cq_ref] is calculated and then averaged
 # 7) Relatively quantify gene expression in treatment group compared to control group
-#     ! N = N_treatment * (N_ctrl)^-1
+#     ! N = N_treatment / N_ctrl
 #     -> For each GOI, average the N from step 4) across all Control group animals
 #     -> For each GOI, relate N from step 4) of each each Treatment group animal to the respective control group averaged N
 # 8) For each GOI, average N across treatment group animals
