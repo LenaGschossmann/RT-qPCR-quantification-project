@@ -76,13 +76,6 @@ source('qpcR_Efficiencies.R')
     
 ####################################################################################
 
-# import data from CFX manager exported excel table that has been collected in 1 excel
-# the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
-data_tot = read.csv(paste(filepath, 'data_tot.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
-colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
-data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
-
-
 ##### get some fix variables extracted
 plates= sort(unique(data_tot$Plate))
 animals = as.character(unique(data_tot$Animal))
@@ -96,6 +89,16 @@ Treatments = c(Group, Control)
 exclude_weirdEffs = 0 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
 methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
 # cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
+# excludeAnimal = c('')
+IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
+#####
+
+# import data from CFX manager exported excel table that has been collected in 1 excel
+# the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
+data_tot = read.csv(paste(filepath, 'data_tot.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
+colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
+data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
+data_tot = data_tot[!(data_tot$Animal %in% excludeAnimal),] #Kick out animals that shall be excluded
 
 #####
 
@@ -353,39 +356,41 @@ data_IC = dataAveraged[dataAveraged$Animal == 'IC',]
 data_Genes = dataAveraged[dataAveraged$Animal != 'IC',]
 data_corrected = data_Genes
 
-IC_corrFactors = data.frame(matrix(ncol=3, nrow=nrow(dataAveraged)))
-colnames(IC_corrFactors) = c('Plate', 'Gene', 'CorrFac')
-
-av_corr_IC = data.frame(matrix(ncol=2, nrow=length(genes)))
-colnames(av_corr_IC) = c('Gene', 'Av_Corr_Value')
-av_corr_IC[,1] = genes
-
-# 1)
-for (iG in 1:length(genes)){ #average all IC values per gene
-  tmpMatrix_genes = data_IC$Gene %in% genes[iG]
-  av_corr_IC$Gene[iG] = genes[iG]
-  av_corr_IC$Av_Corr_Value[iG] = mean(data_IC$Cq[tmpMatrix_genes])
-}
-
-# 3)
-cnt = 1
-for (iPl in plates){
-  for (iG in unique(data_IC$Gene[data_IC$Plate == iPl])){
-    IC_corrFactors$Plate[cnt] = iPl
-    IC_corrFactors$Gene[cnt] = iG
-    IC_corrFactors$CorrFac[cnt] = data_IC$Cq[data_IC$Plate == iPl & data_IC$Gene == iG]/av_corr_IC$Av_Corr_Value[av_corr_IC$Gene == iG]
-    cnt=cnt+1
+if(IC_correction == 1){
+  IC_corrFactors = data.frame(matrix(ncol=3, nrow=nrow(dataAveraged)))
+  colnames(IC_corrFactors) = c('Plate', 'Gene', 'CorrFac')
+  
+  av_corr_IC = data.frame(matrix(ncol=2, nrow=length(genes)))
+  colnames(av_corr_IC) = c('Gene', 'Av_Corr_Value')
+  av_corr_IC[,1] = genes
+  
+  # 1)
+  for (iG in 1:length(genes)){ #average all IC values per gene
+    tmpMatrix_genes = data_IC$Gene %in% genes[iG]
+    av_corr_IC$Gene[iG] = genes[iG]
+    av_corr_IC$Av_Corr_Value[iG] = mean(data_IC$Cq[tmpMatrix_genes])
   }
-}
-
-#correct all animals by respective IC_correction-factor
-for (iPl in plates){
-  tmpGenes = data_corrected$Gene[data_corrected$Plate == iPl]
-  for (iG in 1:length(tmpGenes)){
-    tmpCq = data_corrected$Cq[data_corrected$Plate == iPl][iG] * IC_corrFactors$CorrFac[IC_corrFactors$Plate == iPl & IC_corrFactors$Gene == tmpGenes[iG]] 
-    data_corrected$IC_corr_Cq[data_corrected$Plate == iPl][iG] = tmpCq
+  
+  # 3)
+  cnt = 1
+  for (iPl in plates){
+    for (iG in unique(data_IC$Gene[data_IC$Plate == iPl])){
+      IC_corrFactors$Plate[cnt] = iPl
+      IC_corrFactors$Gene[cnt] = iG
+      IC_corrFactors$CorrFac[cnt] = data_IC$Cq[data_IC$Plate == iPl & data_IC$Gene == iG]/av_corr_IC$Av_Corr_Value[av_corr_IC$Gene == iG]
+      cnt=cnt+1
+    }
   }
-}
+  
+  #correct all animals by respective IC_correction-factor
+  for (iPl in plates){
+    tmpGenes = data_corrected$Gene[data_corrected$Plate == iPl]
+    for (iG in 1:length(tmpGenes)){
+      tmpCq = data_corrected$Cq[data_corrected$Plate == iPl][iG] * IC_corrFactors$CorrFac[IC_corrFactors$Plate == iPl & IC_corrFactors$Gene == tmpGenes[iG]] 
+      data_corrected$IC_corr_Cq[data_corrected$Plate == iPl][iG] = tmpCq
+    }
+  }
+}else{}
 
 
 ################################################## 1. Normalization (to HKGs)
