@@ -40,8 +40,8 @@ library(openxlsx)
 library(qpcR)
 
 #### set some parameters and stuff
-setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/')
-filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis'
+setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis code/PCR/')
+filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/analysis'
 
 #testing:
 # setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR')
@@ -49,7 +49,7 @@ filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis
 
 ##### Input
 numRepl = 2 #number of technical replicates
-HKG = c('HPRT', 'GAPDH') #number of housekeeping genes
+HKG = c('GAPDH') #number of housekeeping genes
 
 acceptable_diff = 0.5 #between replicates
 
@@ -66,34 +66,26 @@ Control = 'IR'
 #Filepaths for raw Cq data:
 # #testing
 # f1='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/Results_Mitogenes_plate1_LG_150618 - '
-f1='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/150618/csv files/Results_Mitogenes_plate1_LG_150618 - '   #= plate1
-f2='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/180618/csv files/Results_Mitogenes_plate2_LG_180618 - '   #= plate2
-f3='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/190618/csv files 1/Results_Mitogenes_plate3_LG_190618 - '   #= plate3...
-f4='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/190618/csv files 2/Results_Mitogenes_plate4_LG_190618 - '
-f5='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/200618/csv files/Results_Mitogenes_plate5_LG_200618 - '
-f6='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/050718/csv files 1/Results_Mitogenes_plate6_LG_050718 - '
-f7='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/050718/csv files 2/Results_Mitogenes_plate7_LG_050718 - '
-f8= 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/060718/csv files 1/Results_Mitogenes_plate8_LG_060718 - '
-f9='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/060718/csv files 2/Results_Mitogenes_plate9_LG_060718 - '
-f10='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/090718/csv files 1/Results_Mitogenes_plate10_LG_090718 - '
-f11='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/100718/csv files/Results_Mitogenes_plate11_LG_100718 - '
-f12='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/110718/csv files/Results_Mitogenes_plate12_LG_110718 - '
-f13='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 1/Results_Mitogenes_plate13_LG_160718 - '
-f14='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 2/Results_Mitogenes_plate14_LG_160718 - '
-f_effs = c(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14) #idx has to represent plate number
+f1='Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/200718/csv files 1/Results_Hc_short_long_mito_1_LG_200718 - '   #= plate1
+f2='Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/200718/csv files 2/Results_Hc_short_long_mito_2_LG_200718 - '   #= plate2
+f3='Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/260718/csv files 1/Results_Hc_short_long_mito_3_LG_260718 - '   #= plate3...
+f4='Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/260718/csv files 2/Results_Hc_short_long_mito_4_LG_260718 - '
+f5='Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/270718/csv files/Results_Hc_short_long_mito_5_LG_270718 - '
+
+f_effs = c(f1, f2, f3, f4, f5) #idx has to represent plate number
 
 #####
-savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysed files'
+savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/analysis'
 #####
 
-source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
+source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
     
 ####################################################################################
 
 
 # import data from CFX manager exported excel table that has been collected in 1 excel
 # the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
-data_tot = read.csv(paste(filepath, 'part3.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
+data_tot = read.csv(paste(filepath, 'data_tot.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
 colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
 data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
 data_tot = data_tot[!(is.na(data_tot$Cq)),]
