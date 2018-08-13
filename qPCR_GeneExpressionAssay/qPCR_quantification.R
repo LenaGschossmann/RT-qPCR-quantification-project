@@ -85,8 +85,7 @@ f_effs = c(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14) #idx has
 savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysed files/all'
 #####
 
-source('linReg_Efficiencies.R')
-source('qpcR_Efficiencies.R')
+source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
     
 ####################################################################################
 
