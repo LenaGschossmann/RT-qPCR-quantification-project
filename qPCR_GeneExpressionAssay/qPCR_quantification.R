@@ -46,11 +46,21 @@ filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis
 # setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR')
 # filepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/'
 
-
+##### Input
 numRepl = 2 #number of technical replicates
 HKG = c('HPRT', 'GAPDH') #number of housekeeping genes
 
 acceptable_diff = 0.5 #between replicates
+
+exclude_weirdEffs = 0 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
+methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
+# cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
+excludeAnimal = c('0')
+IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
+
+Group = c('HR', 'LR')
+Control = 'IR'
+#####
 
 #Filepaths for raw Cq data:
 # #testing
@@ -71,10 +81,24 @@ f13='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv file
 f14='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 2/Results_Mitogenes_plate14_LG_160718 - '
 f_effs = c(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14) #idx has to represent plate number
 
+#####
+savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysed files/all'
+#####
+
 source('linReg_Efficiencies.R')
 source('qpcR_Efficiencies.R')
     
 ####################################################################################
+
+
+# import data from CFX manager exported excel table that has been collected in 1 excel
+# the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
+data_tot = read.csv(paste(filepath, 'part3.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
+colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
+data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
+data_tot = na.omit(data_tot)
+# data_tot = data_tot[!(data_tot$Animal %in% excludeAnimal),] #Kick out animals that shall be excluded
+
 
 ##### get some fix variables extracted
 plates= sort(unique(data_tot$Plate))
@@ -83,23 +107,7 @@ animals = as.character(unique(data_tot$Animal))
 genes = as.character(unique(data_tot$Gene))
 GOI = genes[!(genes %in% HKG)]
 genes = append(HKG, as.character(GOI)) #so that the HKG come as first elements
-Group = c('HR', 'LR')
-Control = 'IR'
 Treatments = c(Group, Control)
-exclude_weirdEffs = 0 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
-methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
-# cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
-# excludeAnimal = c('')
-IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
-#####
-
-# import data from CFX manager exported excel table that has been collected in 1 excel
-# the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
-data_tot = read.csv(paste(filepath, 'data_tot.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
-colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
-data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
-data_tot = data_tot[!(data_tot$Animal %in% excludeAnimal),] #Kick out animals that shall be excluded
-
 #####
 
 dataAveraged = data.frame(matrix(nrow=(nrow(data_tot)/numRepl), ncol=(ncol(data_tot)+1)))
@@ -559,8 +567,6 @@ for(iG in GOI){
 }
 
 ################################ Output
-
-savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysis files/all'
 
 #Total data
 write.xlsx(data_tot, paste(savepath,'data_total.xlsx',sep='/'))

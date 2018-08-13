@@ -3,8 +3,8 @@
 qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weirdEffs, methodEff){
   ##as dataThresholdCq give data_tot to the function
   ##order of files in f_effs needs to correspond to plate numbering
-  Efficiencies = data.frame(matrix(ncol=4))
-  colnames(Efficiencies) = c('Animal', 'Gene', 'Slope', 'Efficiency')
+  Efficiencies = data.frame(matrix(ncol=3))
+  colnames(Efficiencies) = c('Animal', 'Gene', 'Efficiency')
   cntE = 1
   tmpPlates = sort(unique(dataThresholdCq$Plate))
   for(iF in 1:length(tmpPlates)){
