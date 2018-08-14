@@ -11,19 +11,19 @@
 #       ((weighted) nonlinear least-squares (Levenberg-Marquardt) fitting) on combined replicates
 #     --> efficiency is obtained from F_n / F_(n-1) where F is raw fluorescence and n the cycle number
 #     For literature, see: A new method for robust quantitative and qualitative analysis of real-time PCR. Shain EB & Clemens JM.Nucleic Acids Research (2008), 36, e91.
-# 3) Calculate preliminary statistics (Mean, SD) per Treatment group, per gene
-# 4) Exclude outliers according to Dixon's criterion: (sample-mean)>=2*sd
-# 5) Average all Cq values of the Internal Control (IC) and set them as 100%
+# 3) Average all Cq values of the Internal Control (IC) and set them as 100%
 #     -> calculate correction factor for IC genes of each plate according to the 100% af the averaged value
 #     -> correct each gene on each plate by the respective genes IC_correction factor for the respective plate
+# 4) Calculate preliminary statistics (Mean, SD) per Treatment group, per gene
+# 5) Exclude outliers according to Dixon's criterion: (sample-mean)>=2*sd
 # 6) Relatively quantify the expression of each of the genes of interest (GOI) in relation to the average of the housekeeping genes (HKG)
 #     (herefore the above estimated efficiencies are used)
-#     ! N = K*(Eff_ref)^Cq_ref/(Eff_sample)^Cq_sample (for Efficiency as between 1 and 2)
+#     ! N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample (for Efficiency as between 1 and 2)
 #     for the HKG first [(1+Eff_ref)^Cq_ref] is calculated and then averaged
 # 7) Relatively quantify gene expression in treatment group compared to control group
 #     ! N = N_treatment / N_ctrl
-#     -> For each GOI, average the N from step 4) across all Control group animals
-#     -> For each GOI, relate N from step 4) of each each Treatment group animal to the respective control group averaged N
+#     -> For each GOI, average the N from step 6) across all Control group animals
+#     -> For each GOI, relate N from step 6) of each each Treatment group animal to the respective control group averaged N
 # 8) For each GOI, average N across treatment group animals
 # 9) Again Outlier correction?
 
@@ -40,7 +40,7 @@ library(openxlsx)
 library(qpcR)
 
 #### set some parameters and stuff
-setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/')
+setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/')
 filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis'
 
 #testing:
@@ -56,7 +56,7 @@ acceptable_diff = 0.5 #between replicates
 exclude_weirdEffs = 0 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
 methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
 # cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
-excludeAnimal = c('0')
+excludeAnimal = c('26','17')
 IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
 
 Group = c('HR', 'LR')
@@ -86,10 +86,11 @@ f_effs = c(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14) #idx has
 savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysed files'
 #####
 
-source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
-    
-####################################################################################
+source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
+source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
+source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
 
+####################################################################################
 
 # import data from CFX manager exported excel table that has been collected in 1 excel
 # the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
@@ -110,13 +111,6 @@ genes = append(HKG, as.character(GOI)) #so that the HKG come as first elements
 Treatments = c(Group, Control)
 #####
 
-dataAveraged = data.frame(matrix(nrow=(nrow(data_tot)/numRepl), ncol=(ncol(data_tot)+1)))
-colnames(dataAveraged) = c(colnames(data_tot), 'CV')
-
-exclusions = data.frame(matrix(ncol=7, nrow=nrow(data_tot)))
-colnames(exclusions) = c('Plate', 'Animal', 'Group', 'Gene', 'Well', 'Cq', 'Included')
-
-####
 ## Substitute Well names (A01 -> A1) for compatibility reasons
 withZeros = c('01','02','03','04','05','06','07','08','09')
 noZeros=c('1','2','3','4','5','6','7','8','9')
@@ -127,186 +121,67 @@ for(iNumber in 1:length(withZeros)){
 
 ################################################### Check duplicate precision & combine replicates into one averaged value
 
-cnt=1
-tmp_warning_CV =''
-iEx = 1 #for counting outlier
-#loop through plates, animals, genes, replicates
-for (iPl in plates){
-  ExcludeRest = 0
-  for (iA in unique(data_tot$Animal[which(data_tot$Plate == iPl)])){
-    
-    for (iG in unique(data_tot$Gene[which(data_tot$Plate == iPl & data_tot$Animal == iA)])){
-      
-      if(iG %in% exclusions$Gene[exclusions$Animal == iA & exclusions$Plate == iPl]){
-      }else{
-        tmp =0 #necessary to initialize tmp for append function
-        tmpMatrix = which(data_tot$Plate == iPl & data_tot$Animal == iA & data_tot$Gene == iG)
-        for (iR in 1:numRepl){
-           tmp = append(data_tot$Cq[tmpMatrix][iR], tmp)
-        }
-        tmp = tmp[1:numRepl] #get rid of 0 in beginning
-        #reduce replicates into one mean value and store in new dataframe
-        # dataAveraged[cnt,1:(ncol(dataAveraged)-1)] = data_tot[tmpMatrix[1],]
-        if((max(tmp)-min(tmp)) < acceptable_diff){ #exclude dirty replicates | criterion: difference between replicates
-          dataAveraged$Threshold[cnt] = data_tot$Threshold[tmpMatrix[1]]
-          dataAveraged$Plate[cnt] = data_tot$Plate[tmpMatrix[1]]
-          dataAveraged$Well[cnt] = as.character(data_tot$Well[tmpMatrix[1]])
-          dataAveraged$Gene[cnt] = as.character(data_tot$Gene[tmpMatrix[1]])
-          dataAveraged$Group[cnt] = as.character(data_tot$Group[tmpMatrix[1]])
-          dataAveraged$Animal[cnt] = as.character(data_tot$Animal[tmpMatrix[1]])
-          dataAveraged$Cq[cnt] = mean(tmp)
-          tmpCV = sd(tmp)/mean(tmp) 
-          dataAveraged$CV[cnt] = tmpCV
-          cnt=cnt+1
-          
-        } else {
-          
-          for(iR in 1:numRepl){ # write outlier in dataframe
-            exclusions$Plate[iEx] = data_tot$Plate[tmpMatrix[iR]]
-            exclusions$Animal[iEx] = as.character(data_tot$Animal[tmpMatrix[iR]])
-            exclusions$Group[iEx] = as.character(data_tot$Group[tmpMatrix[iR]])
-            exclusions$Gene[iEx] = as.character(data_tot$Gene[tmpMatrix[iR]])
-            exclusions$Well[iEx] = as.character(data_tot$Well[tmpMatrix[iR]])
-            exclusions$Cq[iEx] = data_tot$Cq[tmpMatrix[iR]]
-            exclusions$Included[iEx]= FALSE
-            iEx = iEx+1
-          }
-          if(iA == 'IC'){
-            tmpAverage = mean(data_tot$Cq[data_tot$Gene == iG & data_tot$Plate != iPl & data_tot$Animal == 'IC'])
-          }else{
-            tmpAverage = mean(data_tot$Cq[data_tot$Gene == iG & data_tot$Animal != iA & data_tot$Animal != 'IC'])
-          }
-          print(sprintf("Plate: %d | Animal: %s | Gene: %s", iPl, iA, iG))
-          print(paste('Value:',data_tot$Cq[tmpMatrix]))
-          print(paste('Difference:', round(max(tmp)-min(tmp), digits=4)))
-          print(paste('Average:', tmpAverage))
-          ui = readline(prompt='Type Number of Replicate (1. -> <1>) you want to keep, <0> if you dont want to keep any or <a> if you want to keep all:')
-          input_ok = 0
-          while(input_ok == 0){
-            if(ui == '0'){
-              input_ok = 1
-              if(iG %in% HKG){
-                ExcludeRest = 1
-              }
-            } else if(ui == 'a'){
-              dataAveraged$Threshold[cnt] = data_tot$Threshold[tmpMatrix[1]]
-              dataAveraged$Plate[cnt] = data_tot$Plate[tmpMatrix[1]]
-              dataAveraged$Well[cnt] = as.character(data_tot$Well[tmpMatrix[1]])
-              dataAveraged$Gene[cnt] = as.character(data_tot$Gene[tmpMatrix[1]])
-              dataAveraged$Group[cnt] = as.character(data_tot$Group[tmpMatrix[1]])
-              dataAveraged$Animal[cnt] = as.character(data_tot$Animal[tmpMatrix[1]])
-              dataAveraged$Cq[cnt] = mean(tmp)
-              tmpCV = sd(tmp)/mean(tmp) 
-              dataAveraged$CV[cnt] = tmpCV
-              exclusions$Included[(iEx-numRepl):(iEx-1)] = TRUE
-              cnt=cnt+1
-              input_ok = 1
-              
-            }else if(ui %in% 1:numRepl){
-              # take indicated replicate value anyway
-              ui=as.numeric(ui)
-              dataAveraged$Threshold[cnt] = data_tot$Threshold[tmpMatrix[ui]]
-              dataAveraged$Plate[cnt] = data_tot$Plate[tmpMatrix[ui]]
-              dataAveraged$Well[cnt] = as.character(data_tot$Well[tmpMatrix[ui]])
-              dataAveraged$Gene[cnt] = as.character(data_tot$Gene[tmpMatrix[ui]])
-              dataAveraged$Group[cnt] = as.character(data_tot$Group[tmpMatrix[ui]])
-              dataAveraged$Animal[cnt] = as.character(data_tot$Animal[tmpMatrix[ui]])
-              dataAveraged$Cq[cnt] = data_tot$Cq[tmpMatrix][ui]
-              dataAveraged$CV[cnt] = 0
-              exclusions$Included[(iEx-1-numRepl+ui)] = TRUE
-              cnt=cnt+1
-              input_ok = 1
-            }else{
-              ui = readline(prompt='Please make a valid entry:')
-            }
-          }
-        }
-      }
-    }
-    
-    if(ExcludeRest == 1){#if excluded Gene is HKG, exclude rest of genes of animal
-      dataAveraged[dataAveraged$Animal == iA & dataAveraged$Plate == iPl & is.na(dataAveraged$Cq) == FALSE,] = NA
-    }
-    
+AvList = qPCR_replAveraging(data_tot)
+
+dataAveraged = AvList[[1]]
+exclusions = AvList[[2]]
+
+################################################### IC-Normalization to exclude effects of plate that do not have to do with the individual efficiencies but global factors
+# 1) Average IC of different plates
+# 2) Set  as 100%
+# 3) Relate the in 4) calculated differences to the averaged IC differences --> Correction factor per plate
+
+#split dataAveraged into data and data_IC
+data_IC = dataAveraged[dataAveraged$Animal == 'IC',]
+data_Genes = dataAveraged[dataAveraged$Animal != 'IC',]
+data_corrected = data_Genes
+
+if(IC_correction == 1){
+  IC_corrFactors = data.frame(matrix(ncol=3, nrow=nrow(dataAveraged)))
+  colnames(IC_corrFactors) = c('Plate', 'Gene', 'CorrFac')
+  
+  av_corr_IC = data.frame(matrix(ncol=2, nrow=length(genes)))
+  colnames(av_corr_IC) = c('Gene', 'Av_Corr_Value')
+  av_corr_IC[,1] = genes
+  
+  # 1)
+  for (iG in 1:length(genes)){ #average all IC values per gene
+    tmpMatrix_genes = data_IC$Gene %in% genes[iG]
+    av_corr_IC$Gene[iG] = genes[iG]
+    av_corr_IC$Av_Corr_Value[iG] = mean(data_IC$Cq[tmpMatrix_genes])
   }
-}
-
-
-#calculate mean and sd
-dataAv_prelimStats = data.frame(matrix(ncol=4, nrow=length(genes)*length(Treatments)))
-colnames(dataAv_prelimStats) = c('Treatment', 'Gene', 'Mean', 'SD')
-cnt=1
-for(iG in genes){
-  for(iT in Treatments){
-    dataAv_prelimStats$Gene[cnt] = iG
-    dataAv_prelimStats$Treatment[cnt] = iT
-    dataAv_prelimStats$Mean[cnt] = mean(dataAveraged$Cq[dataAveraged$Gene == iG & dataAveraged$Group == iT & is.na(dataAveraged$Cq) == FALSE])
-    dataAv_prelimStats$SD[cnt] = sd(dataAveraged$Cq[dataAveraged$Gene == iG & dataAveraged$Group == iT & is.na(dataAveraged$Cq) == FALSE])
-    cnt = cnt+1
-  }
-}
-
-
-# Exclude outlier after Dixon
-outlier = data.frame(matrix(ncol=ncol(exclusions), nrow=nrow(data_tot)))
-colnames(outlier) = colnames(exclusions)
-iO=1
-for(iT in unique(dataAveraged$Group[!(dataAveraged$Group == '') & is.na(dataAveraged$Cq) == FALSE])){
-  for(iPl in plates){
-    for(iA in unique(dataAveraged$Animal[dataAveraged$Plate == iPl & dataAveraged$Group == iT & is.na(dataAveraged$Cq) == FALSE])){
-      excludeAnimal = 0
-      tmpGOI = unique(dataAveraged$Gene[dataAveraged$Plate == iPl & dataAveraged$Animal == iA & !(dataAveraged$Gene %in% HKG) & is.na(dataAveraged$Cq) == FALSE])
-      for(iHKG in HKG){
-        tmpMean = dataAv_prelimStats$Mean[dataAv_prelimStats$Gene == iHKG & dataAv_prelimStats$Treatment == iT]
-        tmpSD = dataAv_prelimStats$SD[dataAv_prelimStats$Gene == iHKG & dataAv_prelimStats$Treatment == iT]
-        if(abs(dataAveraged$Cq[dataAveraged$Animal == iA & dataAveraged$Gene == iHKG & dataAveraged$Plate == iPl & is.na(dataAveraged$Cq) == FALSE]-tmpMean) >= 2*tmpSD){ #Apply Dixons outlier criterion on averaged replicates
-          excludeAnimal = 1
-        }else{}
-      }
-      if(excludeAnimal == 1){
-          tmpOut = dataAveraged$Animal == iA & dataAveraged$Plate == iPl & is.na(dataAveraged$Cq) == FALSE
-          iOrange = c(iO:(iO + sum(tmpOut) -1))
-          outlier$Plate[iOrange] = dataAveraged$Plate[tmpOut]
-          outlier$Animal[iOrange] = as.character(dataAveraged$Animal[tmpOut])
-          outlier$Group[iOrange] = as.character(dataAveraged$Group[tmpOut])
-          outlier$Gene[iOrange] = as.character(dataAveraged$Gene[tmpOut])
-          outlier$Cq[iOrange] = dataAveraged$Cq[tmpOut]
-          outlier$Well[iOrange] = 'Averaged'
-          outlier$Included[iOrange]= FALSE
-          dataAveraged[tmpOut,] = NA
-          iO = 1+iOrange[length(iOrange)]
-      }else{
-        for(iG in tmpGOI){
-          tmpMean = dataAv_prelimStats$Mean[dataAv_prelimStats$Gene == iG & dataAv_prelimStats$Treatment == iT]
-          tmpSD = dataAv_prelimStats$SD[dataAv_prelimStats$Gene == iG & dataAv_prelimStats$Treatment == iT]
-          if(abs(dataAveraged$Cq[dataAveraged$Animal == iA & dataAveraged$Gene == iG & dataAveraged$Plate == iPl & is.na(dataAveraged$Cq) == FALSE]-tmpMean) >= 2*tmpSD){ #Apply Dixons outlier criterion on averaged replicates
-            tmpOut = dataAveraged$Animal == iA & dataAveraged$Plate == iPl & dataAveraged$Gene == iG & is.na(dataAveraged$Cq) == FALSE
-            outlier$Plate[iO] = dataAveraged$Plate[tmpOut]
-            outlier$Animal[iO] = as.character(dataAveraged$Animal[tmpOut])
-            outlier$Group[iO] = as.character(dataAveraged$Group[tmpOut])
-            outlier$Gene[iO] = as.character(dataAveraged$Gene[tmpOut])
-            outlier$Cq[iO] = dataAveraged$Cq[tmpOut]
-            outlier$Well[iO] = 'Averaged'
-            outlier$Included[iO]= FALSE
-            dataAveraged[tmpOut,] = NA
-            iO = iO+1
-          }else{}
-          
-          }
-        }
-      }
+  
+  # 3)
+  cnt = 1
+  for (iPl in plates){
+    for (iG in unique(data_IC$Gene[data_IC$Plate == iPl])){
+      IC_corrFactors$Plate[cnt] = iPl
+      IC_corrFactors$Gene[cnt] = iG
+      IC_corrFactors$CorrFac[cnt] = data_IC$Cq[data_IC$Plate == iPl & data_IC$Gene == iG]/av_corr_IC$Av_Corr_Value[av_corr_IC$Gene == iG]
+      cnt=cnt+1
     }
   }
   
-  
+  IC_corrFactors = na.omit(IC_corrFactors)
+  #correct all animals by respective IC_correction-factor
+  for (iPl in plates){
+    tmpGenes = data_corrected$Gene[data_corrected$Plate == iPl]
+    for (iG in 1:length(tmpGenes)){
+      tmpCq = data_corrected$Cq[data_corrected$Plate == iPl][iG] * IC_corrFactors$CorrFac[IC_corrFactors$Plate == iPl & IC_corrFactors$Gene == tmpGenes[iG]] 
+      data_corrected$IC_corr_Cq[data_corrected$Plate == iPl][iG] = tmpCq
+    }
+  }
+}else{}
 
-dataAveraged = na.omit(dataAveraged)
-outlier = na.omit(outlier)
-exclusions= na.omit(exclusions)
 
+#################################################### Exclude outlier after Dixon
+
+DixonList = qPCR_Dixon_Outlier(data_corrected, 1, genes, Treatments)
+dataAveraged = DixonList[[1]]
+outlier = DixonList[[2]]
+dataAv_prelimStats = DixonList[[3]]
 exclusions = rbind(exclusions, outlier)
   
-
 ################################################### Efficiencies
 
 # Efficiencies =data.frame()
@@ -358,56 +233,9 @@ if(exclude_weirdEffs == 1){
   exclusions = exclusions[!(exclusions$Plate == 0),]
 }
 
-################################################### IC-Normalization to exclude effects of plate that do not have to do with the individual efficiencies but global factors
-# 1) Average IC of different plates
-# 2) Set  as 100%
-# 3) Relate the in 4) calculated differences to the averaged IC differences --> Correction factor per plate
-
-
-#split dataAveraged into data and data_IC
-data_IC = dataAveraged[dataAveraged$Animal == 'IC',]
-data_Genes = dataAveraged[dataAveraged$Animal != 'IC',]
-data_corrected = data_Genes
-
-if(IC_correction == 1){
-  IC_corrFactors = data.frame(matrix(ncol=3, nrow=nrow(dataAveraged)))
-  colnames(IC_corrFactors) = c('Plate', 'Gene', 'CorrFac')
-  
-  av_corr_IC = data.frame(matrix(ncol=2, nrow=length(genes)))
-  colnames(av_corr_IC) = c('Gene', 'Av_Corr_Value')
-  av_corr_IC[,1] = genes
-  
-  # 1)
-  for (iG in 1:length(genes)){ #average all IC values per gene
-    tmpMatrix_genes = data_IC$Gene %in% genes[iG]
-    av_corr_IC$Gene[iG] = genes[iG]
-    av_corr_IC$Av_Corr_Value[iG] = mean(data_IC$Cq[tmpMatrix_genes])
-  }
-  
-  # 3)
-  cnt = 1
-  for (iPl in plates){
-    for (iG in unique(data_IC$Gene[data_IC$Plate == iPl])){
-      IC_corrFactors$Plate[cnt] = iPl
-      IC_corrFactors$Gene[cnt] = iG
-      IC_corrFactors$CorrFac[cnt] = data_IC$Cq[data_IC$Plate == iPl & data_IC$Gene == iG]/av_corr_IC$Av_Corr_Value[av_corr_IC$Gene == iG]
-      cnt=cnt+1
-    }
-  }
-  
-  #correct all animals by respective IC_correction-factor
-  for (iPl in plates){
-    tmpGenes = data_corrected$Gene[data_corrected$Plate == iPl]
-    for (iG in 1:length(tmpGenes)){
-      tmpCq = data_corrected$Cq[data_corrected$Plate == iPl][iG] * IC_corrFactors$CorrFac[IC_corrFactors$Plate == iPl & IC_corrFactors$Gene == tmpGenes[iG]] 
-      data_corrected$IC_corr_Cq[data_corrected$Plate == iPl][iG] = tmpCq
-    }
-  }
-}else{}
-
 
 ################################################## 1. Normalization (to HKGs)
-#N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample  |  K: is going to chancel out in the second normalization step later, so wee dont regard it here
+#N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample  |  K: is going to chancel out in the second normalization step later, so wee dont regard it here | the '1' in front of the 'E' is not needed since efficiency already between 1 and 2
 # N here is the ratio of initial amount of target gene over initial amount of reference gene
 # tmpMatrix_HKG = data_corrected$Gene %in% HKG
 
