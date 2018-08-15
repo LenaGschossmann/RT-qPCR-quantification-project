@@ -94,7 +94,7 @@ source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbei
 
 # import data from CFX manager exported excel table that has been collected in 1 excel
 # the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
-data_tot = read.csv(paste(filepath, 'part3.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
+data_tot = read.csv(paste(filepath, 'part1.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
 colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
 data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
 data_tot = data_tot[!(is.na(data_tot$Cq)),]
@@ -421,6 +421,12 @@ write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
 
 
 ################################ Further plots
+#specify colors
+colHR = rgb(255, 0, 0, 255, names = 'HR', max=255)
+colIR = rgb(5,190,120, 255, names= 'IR', max=255)
+colLR = rgb(87,87,249, 255, names= 'LR', max=255)
+cols = c(colHR, colIR, colLR)
+
 
 ##Stability of RefG
 ggplot(data=dataAveraged[dataAveraged$Gene %in% HKG,],
@@ -429,6 +435,7 @@ ggplot(data=dataAveraged[dataAveraged$Gene %in% HKG,],
   geom_line()
 
 #plot Efficiency histogram
-ggplot(data=Efficiencies[Efficiencies$Outlier == 0,], aes(x=Efficiencies$Efficiency[Efficiencies$Outlier == 0]))+
-  geom_histogram(color='black', fill='lightgray')+ xlab('Efficiency')
+plotData= Efficiencies[Efficiencies$Outlier == 0,]
+ggplot(data=plotData, aes(x=plotData$Efficiency, fill=plotData$Group))+
+  geom_histogram(color='black')+ scale_fill_manual(values=cols, name='Group')+xlab('Efficiency')
 
