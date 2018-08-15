@@ -3,8 +3,8 @@
 qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weirdEffs, methodEff){
   ##as dataThresholdCq give data_tot to the function
   ##order of files in f_effs needs to correspond to plate numbering
-  Efficiencies = data.frame(matrix(ncol=3))
-  colnames(Efficiencies) = c('Animal', 'Gene', 'Efficiency')
+  Efficiencies = data.frame(matrix(ncol=4))
+  colnames(Efficiencies) = c('Animal', 'Gene', 'Efficiency', 'Outlier')
   cntE = 1
   tmpPlates = sort(unique(dataThresholdCq$Plate))
   for(iF in 1:length(tmpPlates)){
@@ -85,16 +85,6 @@ qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weird
             tmpEff[iR]= eff$eff[[1]]
           }
           finalEff=mean(tmpEff)
-          if(weirdEffs == 1){
-            if(finalEff < 1.9 | finalEff > 2.1){
-              take = tmpEff[which(tmpEff < 2.1 & tmpEff>1.9)]
-              if(sum(take) == FALSE){
-                finalEff = FALSE
-              }else{
-                finalEff = mean(tmpEff[take])
-              }
-            }
-          }
         }
         Efficiencies = rbind(Efficiencies[], vector(length=ncol(Efficiencies)))
         Efficiencies$Plate[cntE] = tmpPlates[iF]
@@ -110,7 +100,18 @@ qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weird
     } #closes Animal loop
     
   }
-  Efficiencies = Efficiencies[Efficiencies$Animal != FALSE,] # to delete any empty rows at end
+  
+  Efficiencies = Efficiencies[!(Efficiencies$Gene == FALSE),] # to delete any empty rows at end
+  Efficiencies$Outlier = 0
+  if(weirdEffs == 1){
+    tmpGenes = unique(Efficiencies$Gene)
+    for(iG in tmpGenes){
+      tmpMean = mean(Efficiencies$Efficiency[Efficiencies$Gene == iG])
+      tmpSD = sd(Efficiencies$Efficiency[Efficiencies$Gene == iG])
+      IsOutlier = (Efficiencies$Gene == iG & Efficiencies$Efficiency < (tmpMean - 2*tmpSD)) | (Efficiencies$Gene == iG & Efficiencies$Efficiency > (tmpMean + 2*tmpSD))
+      Efficiencies$Outlier[IsOutlier] = 1
+    }
+  }
   
   return(Efficiencies)
   }

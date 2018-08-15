@@ -53,7 +53,7 @@ HKG = c('HPRT', 'GAPDH') #number of housekeeping genes
 
 acceptable_diff = 0.5 #between replicates
 
-exclude_weirdEffs = 0 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
+exclude_weirdEffs = 1 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
 methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
 # cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
 excludeAnimal = c('26','17')
@@ -184,21 +184,20 @@ exclusions = rbind(exclusions, outlier)
   
 ################################################### Efficiencies
 
-# Efficiencies =data.frame()
-# Efficiencies=linReg_Efficiencies(data_tot, dataAveraged, f_effs, exclusions, numRepl)
-# 
-# Av_effs = data.frame(matrix(ncol=2, nrow=length(genes)))
-# colnames(Av_effs) = c('Gene', 'Av_Efficiency')
-# for(iG in 1: length(genes)){
-#   Av_effs$Gene[iG] = genes[iG]
-#   Av_effs$Av_Efficiency[iG] = mean(Efficiencies$Efficiency[Efficiencies$Gene == genes[iG]])
-# }
-
 Efficiencies= qpcR_Efficiencies(data_tot, f_effs, exclusions, numRepl, exclude_weirdEffs, methodEff)
 
 #exclude animals with weird efficiencies, if HKG -> exclude all genes of that animal on plate
 if(exclude_weirdEffs == 1){
-  tmpExclude = Efficiencies[Efficiencies$Efficiency == 0,]
+  tmpExclude = Efficiencies[Efficiencies$Outlier == 1,]
+  # check if sample is already kicked out by Dixon correction
+  for(iExcl in 1:nrow(tmpExclude)){
+    if(sum(outlier$Plate %in% tmpExclude$Plate[iExcl] &
+       outlier$Animal %in% tmpExclude$Animal[iExcl] &
+       outlier$Gene %in% tmpExclude$Gene[iExcl]) > 0){
+      tmpExclude[iExcl,] = NA
+    }
+  }
+  tmpExclude = na.omit(tmpExclude)
   if(sum(tmpExclude$Gene %in% HKG) > 0){
     addEx = which(tmpExclude$Gene %in% HKG)
     for(iAdd in addEx){
@@ -428,4 +427,8 @@ ggplot(data=dataAveraged[dataAveraged$Gene %in% HKG,],
        aes(x=(1:nrow(dataAveraged[dataAveraged$Gene %in% HKG,])),
            y=dataAveraged$Cq[dataAveraged$Gene %in% HKG], group=dataAveraged$Gene[dataAveraged$Gene %in% HKG]))+
   geom_line()
+
+#plot Efficiency histogram
+ggplot(data=Efficiencies[Efficiencies$Outlier == 0,], aes(x=Efficiencies$Efficiency[Efficiencies$Outlier == 0]))+
+  geom_histogram(color='black', fill='lightgray')+ xlab('Efficiency')
 
