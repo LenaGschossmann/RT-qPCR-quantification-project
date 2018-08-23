@@ -1,6 +1,6 @@
 # for literature see also: Rao et al (2013): An improvement of the 2^(-delta delta CT) method for quantitative real-time polymerase chain reaction data analysis
 
-qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weirdEffs, methodEff){
+qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weirdEffs, effsOuttaRange, methodEff){
   ##as dataThresholdCq give data_tot to the function
   ##order of files in f_effs needs to correspond to plate numbering
   Efficiencies = data.frame(matrix(ncol=5))
@@ -10,7 +10,7 @@ qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weird
   for(iF in 1:length(tmpPlates)){
     tmpData = dataThresholdCq[dataThresholdCq$Plate == tmpPlates[iF] & dataThresholdCq$Animal != 'IC',]
     ##single cycle values
-    tmpRaw = read.csv(paste(f_effs[tmpPlates[iF]], 'Quantification Amplification Results_SYBR.csv'), dec=',', sep=';', stringsAsFactors = FALSE)
+    tmpRaw = read.csv(paste(f_effs[tmpPlates[iF]], 'Quantification Amplification Results_SYBR.csv'), dec=',', sep=';', stringsAsFactors = TRUE)
     ##rename columns
     tmpRaw = tmpRaw[,2:ncol(tmpRaw)]
     
@@ -99,7 +99,6 @@ qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weird
         
       } #closes Gene loop
     } #closes Animal loop
-    
   }
   
   Efficiencies = Efficiencies[!(Efficiencies$Gene == FALSE),] # to delete any empty rows at end
@@ -111,7 +110,12 @@ qpcR_Efficiencies = function(dataThresholdCq, f_effs, exclusions, numRepl, weird
       tmpSD = sd(Efficiencies$Efficiency[Efficiencies$Gene == iG])
       IsOutlier = (Efficiencies$Gene == iG & Efficiencies$Efficiency < (tmpMean - 2*tmpSD)) | (Efficiencies$Gene == iG & Efficiencies$Efficiency > (tmpMean + 2*tmpSD))
       Efficiencies$Outlier[IsOutlier] = 1
+      #and kick out all efficiencies that do not lie between 1.9 and 2.1
     }
+  }
+  if(effsOuttaRange == 1){
+    IsOutlier = (Efficiencies$Gene == iG & Efficiencies$Efficiency < 1.9) | (Efficiencies$Gene == iG & Efficiencies$Efficiency > 2.1)
+    Efficiencies$Outlier[IsOutlier] = 1
   }
   
   return(Efficiencies)

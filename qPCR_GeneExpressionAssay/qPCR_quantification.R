@@ -27,25 +27,20 @@
 # 8) For each GOI, average N across treatment group animals
 # 9) Again Outlier correction?
 
-library(ggplot2)
-library(gridExtra)
-library(cowplot)
-library(grid)
-library(ggsignif)
-library(scales)
-library(RColorBrewer)
+
 # Sys.setenv(JAVA_HOME= 'C:\\Users\\lena_\\Downloads\\Matlab 2017a\\_temp_matlab_R2017a_win64\\sys\\java\\jre\\win64\\jre')
 # library(rJava)
 library(openxlsx)
 library(qpcR)
 
-#### set some parameters and stuff
-setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/')
-filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis'
+options(decimals=5)
 
-#testing:
-# setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR')
-# filepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/'
+#### set some parameters and stuff
+# setwd('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/')
+# filepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/qPCR_DNA_damage/analysis'
+
+setwd('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/')
+filepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis'
 
 ##### Input
 numRepl = 2 #number of technical replicates
@@ -53,10 +48,11 @@ HKG = c('HPRT', 'GAPDH') #number of housekeeping genes
 
 acceptable_diff = 0.5 #between replicates
 
-exclude_weirdEffs = 1 #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
+exclude_weirdEffs = 1 # set to one if outlier >/< mean+/- 2sd shall be eliminated
+effsOuttaRange = 1  #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
 methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
 # cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
-excludeAnimal = c('26','17')
+excludeAnimal = c('17')
 IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
 
 Group = c('HR', 'LR')
@@ -64,37 +60,59 @@ Control = 'IR'
 #####
 
 #Filepaths for raw Cq data:
-# #testing
-# f1='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis/PCR/Results_Mitogenes_plate1_LG_150618 - '
-f1='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/150618/csv files/Results_Mitogenes_plate1_LG_150618 - '   #= plate1
-f2='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/180618/csv files/Results_Mitogenes_plate2_LG_180618 - '   #= plate2
-f3='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/190618/csv files 1/Results_Mitogenes_plate3_LG_190618 - '   #= plate3...
-f4='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/190618/csv files 2/Results_Mitogenes_plate4_LG_190618 - '
-f5='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/200618/csv files/Results_Mitogenes_plate5_LG_200618 - '
-f6='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/050718/csv files 1/Results_Mitogenes_plate6_LG_050718 - '
-f7='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/050718/csv files 2/Results_Mitogenes_plate7_LG_050718 - '
-f8= 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/060718/csv files 1/Results_Mitogenes_plate8_LG_060718 - '
-f9='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/060718/csv files 2/Results_Mitogenes_plate9_LG_060718 - '
-f10='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/090718/csv files 1/Results_Mitogenes_plate10_LG_090718 - '
-f11='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/100718/csv files/Results_Mitogenes_plate11_LG_100718 - '
-f12='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/110718/csv files/Results_Mitogenes_plate12_LG_110718 - '
-f13='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 1/Results_Mitogenes_plate13_LG_160718 - '
-f14='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 2/Results_Mitogenes_plate14_LG_160718 - '
+f1='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/150618/csv files/Results_Mitogenes_plate1_LG_150618 - '   #= plate1
+f2='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/180618/csv files/Results_Mitogenes_plate2_LG_180618 - '   #= plate2
+f3='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/190618/csv files 1/Results_Mitogenes_plate3_LG_190618 - '   #= plate3...
+f4='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/190618/csv files 2/Results_Mitogenes_plate4_LG_190618 - '
+f5='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/200618/csv files/Results_Mitogenes_plate5_LG_200618 - '
+f6='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/050718/csv files 1/Results_Mitogenes_plate6_LG_050718 - '
+f7='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/050718/csv files 2/Results_Mitogenes_plate7_LG_050718 - '
+f8= 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/060718/csv files 1/Results_Mitogenes_plate8_LG_060718 - '
+f9='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/060718/csv files 2/Results_Mitogenes_plate9_LG_060718 - '
+f10='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/090718/csv files 1/Results_Mitogenes_plate10_LG_090718 - '
+f11='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/100718/csv files/Results_Mitogenes_plate11_LG_100718 - '
+f12='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/110718/csv files/Results_Mitogenes_plate12_LG_110718 - '
+f13='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/160718/csv files 1/Results_Mitogenes_plate13_LG_160718 - '
+f14='C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/160718/csv files 2/Results_Mitogenes_plate14_LG_160718 - '
+
+
+# f1='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/150618/csv files/Results_Mitogenes_plate1_LG_150618 - '   #= plate1
+# f2='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/180618/csv files/Results_Mitogenes_plate2_LG_180618 - '   #= plate2
+# f3='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/190618/csv files 1/Results_Mitogenes_plate3_LG_190618 - '   #= plate3...
+# f4='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/190618/csv files 2/Results_Mitogenes_plate4_LG_190618 - '
+# f5='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/200618/csv files/Results_Mitogenes_plate5_LG_200618 - '
+# f6='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/050718/csv files 1/Results_Mitogenes_plate6_LG_050718 - '
+# f7='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/050718/csv files 2/Results_Mitogenes_plate7_LG_050718 - '
+# f8= 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/060718/csv files 1/Results_Mitogenes_plate8_LG_060718 - '
+# f9='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/060718/csv files 2/Results_Mitogenes_plate9_LG_060718 - '
+# f10='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/090718/csv files 1/Results_Mitogenes_plate10_LG_090718 - '
+# f11='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/100718/csv files/Results_Mitogenes_plate11_LG_100718 - '
+# f12='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/110718/csv files/Results_Mitogenes_plate12_LG_110718 - '
+# f13='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 1/Results_Mitogenes_plate13_LG_160718 - '
+# f14='Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/160718/csv files 2/Results_Mitogenes_plate14_LG_160718 - '
 f_effs = c(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14) #idx has to represent plate number
 
 #####
-savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysed files'
+# savepath = 'Y:/Lena/Bachelorthesis/Experiments/PCR/Mito_gene_expression/analysis/analysed files'
+savepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis/R_analysis'
 #####
 
-source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
-source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
-source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
+# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
+# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
+# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
+# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_GeneExpressionAssay/deltadeltaCq.R')
+
+source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
+source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
+source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
+source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_GeneExpressionAssay/deltadeltaCq.R')
+
 
 ####################################################################################
 
 # import data from CFX manager exported excel table that has been collected in 1 excel
 # the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
-data_tot = read.csv(paste(filepath, 'part1.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
+data_tot = read.csv(paste(filepath, 'part3.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
 colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
 data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
 data_tot = data_tot[!(is.na(data_tot$Cq)),]
@@ -130,6 +148,7 @@ exclusions = AvList[[2]]
 # 1) Average IC of different plates
 # 2) Set  as 100%
 # 3) Relate the in 4) calculated differences to the averaged IC differences --> Correction factor per plate
+
 
 #split dataAveraged into data and data_IC
 data_IC = dataAveraged[dataAveraged$Animal == 'IC',]
@@ -177,14 +196,14 @@ if(IC_correction == 1){
 #################################################### Exclude outlier after Dixon
 
 DixonList = qPCR_Dixon_Outlier(data_corrected, 1, genes, Treatments)
-dataAveraged = DixonList[[1]]
+data_corrected = DixonList[[1]]
 outlier = DixonList[[2]]
 dataAv_prelimStats = DixonList[[3]]
 exclusions = rbind(exclusions, outlier)
-  
+
 ################################################### Efficiencies
 
-Efficiencies= qpcR_Efficiencies(data_tot, f_effs, exclusions, numRepl, exclude_weirdEffs, methodEff)
+Efficiencies= qpcR_Efficiencies(data_tot, f_effs, exclusions, numRepl, exclude_weirdEffs, effsOuttaRange, methodEff)
 
 #exclude animals with weird efficiencies, if HKG -> exclude all genes of that animal on plate
 if(exclude_weirdEffs == 1){
@@ -192,8 +211,8 @@ if(exclude_weirdEffs == 1){
   # check if sample is already kicked out by Dixon correction
   for(iExcl in 1:nrow(tmpExclude)){
     if(sum(outlier$Plate %in% tmpExclude$Plate[iExcl] &
-       outlier$Animal %in% tmpExclude$Animal[iExcl] &
-       outlier$Gene %in% tmpExclude$Gene[iExcl]) > 0){
+           outlier$Animal %in% tmpExclude$Animal[iExcl] &
+           outlier$Gene %in% tmpExclude$Gene[iExcl]) > 0){
       tmpExclude[iExcl,] = NA
     }
   }
@@ -201,9 +220,9 @@ if(exclude_weirdEffs == 1){
   if(sum(tmpExclude$Gene %in% HKG) > 0){
     addEx = which(tmpExclude$Gene %in% HKG)
     for(iAdd in addEx){
-      tmpAddexclude = dataAveraged[dataAveraged$Animal == tmpExclude$Animal[iAdd] &
-                                     dataAveraged$Plate == tmpExclude$Plate[iAdd] &
-                                     dataAveraged$Gene != tmpExclude$Gene[iAdd],]
+      tmpAddexclude = data_corrected[data_corrected$Animal == tmpExclude$Animal[iAdd] &
+                                     data_corrected$Plate == tmpExclude$Plate[iAdd] &
+                                     data_corrected$Gene != tmpExclude$Gene[iAdd],]
       for(iAdd2 in 1:nrow(tmpAddexclude)){
         tmpExclude = rbind(tmpExclude, vector(length=ncol(tmpExclude)))
         tmpExclude$Animal[nrow(tmpExclude)] = tmpAddexclude$Animal[iAdd2]
@@ -214,29 +233,27 @@ if(exclude_weirdEffs == 1){
   }
   
   for(iEx in 1:nrow(tmpExclude)){
-    excludeMatrix = dataAveraged$Animal == tmpExclude$Animal[iEx] & dataAveraged$Gene == tmpExclude$Gene[iEx] &
-      dataAveraged$Plate == tmpExclude$Plate[iEx]
+    excludeMatrix = data_corrected$Animal == tmpExclude$Animal[iEx] & data_corrected$Gene == tmpExclude$Gene[iEx] &
+      data_corrected$Plate == tmpExclude$Plate[iEx]
     if(sum(excludeMatrix > 0)){
       exclusions = rbind(exclusions, vector(length=ncol(exclusions)))
-      exclusions$Plate[nrow(exclusions)] = dataAveraged$Plate[excludeMatrix]
+      exclusions$Plate[nrow(exclusions)] = data_corrected$Plate[excludeMatrix]
       exclusions$Well[nrow(exclusions)] = 'Averaged'
-      exclusions$Animal[nrow(exclusions)] = dataAveraged$Animal[excludeMatrix]
-      exclusions$Group[nrow(exclusions)] = dataAveraged$Group[excludeMatrix]
-      exclusions$Gene[nrow(exclusions)] = dataAveraged$Gene[excludeMatrix]
-      exclusions$Cq[nrow(exclusions)] = dataAveraged$Cq[excludeMatrix]
+      exclusions$Animal[nrow(exclusions)] = data_corrected$Animal[excludeMatrix]
+      exclusions$Group[nrow(exclusions)] = data_corrected$Group[excludeMatrix]
+      exclusions$Gene[nrow(exclusions)] = data_corrected$Gene[excludeMatrix]
+      exclusions$Cq[nrow(exclusions)] = data_corrected$Cq[excludeMatrix]
       exclusions$Included[nrow(exclusions)] = FALSE
-      dataAveraged[excludeMatrix,] = NA
-      dataAveraged = na.omit(dataAveraged)
+      data_corrected[excludeMatrix,] = NA
+      data_corrected = na.omit(data_corrected)
     }
   }
   exclusions = exclusions[!(exclusions$Plate == 0),]
 }
 
-
 ################################################## 1. Normalization (to HKGs)
 #N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample  |  K: is going to chancel out in the second normalization step later, so wee dont regard it here | the '1' in front of the 'E' is not needed since efficiency already between 1 and 2
 # N here is the ratio of initial amount of target gene over initial amount of reference gene
-# tmpMatrix_HKG = data_corrected$Gene %in% HKG
 
 for(iPl in plates){
   for (iA in unique(data_corrected$Animal[data_corrected$Plate == iPl])){
@@ -244,30 +261,30 @@ for(iPl in plates){
     tmpGenes = tmpGenes[!(tmpGenes %in% HKG)]
     #calculate mean of (E)^Cq_HKG for all HKG
     tmp_N_HKG = vector(length=length(HKG))
-   for(iHKG in 1:length(HKG)){
+    for(iHKG in 1:length(HKG)){
      tmp_eff_HKG = Efficiencies$Efficiency[Efficiencies$Gene == HKG[iHKG] & Efficiencies$Animal == iA & Efficiencies$Plate == iPl]
      tmp_N_HKG[iHKG] = (tmp_eff_HKG)^(data_corrected$IC_corr_Cq[data_corrected$Gene == HKG[iHKG] & data_corrected$Animal == iA & data_corrected$Plate == iPl])
-   }
-    tmp_Av_Cq_HKG = mean(tmp_N_HKG)
+    }
+    tmp_Av_HKG = mean(tmp_N_HKG)
   
     #calculate (E)^Cq_GOI for all GOI
     for (iG in tmpGenes){
       tmp_eff_GOI = Efficiencies$Efficiency[Efficiencies$Gene == iG & Efficiencies$Animal == iA & Efficiencies$Plate == iPl]
       tmpX_GOI = (tmp_eff_GOI)^(data_corrected$IC_corr_Cq[data_corrected$Animal == iA & data_corrected$Gene == iG])
-      data_corrected$HKG_norm_N[data_corrected$Animal == iA & data_corrected$Gene == iG & data_corrected$Plate == iPl] = tmp_Av_Cq_HKG/tmpX_GOI
+      data_corrected$HKG_norm_N[data_corrected$Animal == iA & data_corrected$Gene == iG & data_corrected$Plate == iPl] = tmp_Av_HKG/tmpX_GOI
     }
   }
 }
 
+data_corrected_all = data_corrected
 data_corrected = data_corrected[!(data_corrected$Gene %in% HKG),]
 
 ################################################## 2. Normalization (to Control Group)
 #N = N_treatment / N_ctrl |  K: would going chancel out here
 # for derivation see: Scheefe et al. (2006): Quantitative real-time RT-PCR data analysis: current concepts and the novel "gene expression's CT difference" formula.
 # split data_corrected into Control (IR) and Treatment (LR, HR)
-tmp_Ctrl = data_corrected[data_corrected$Group == Control,]
-data_corrected_Treat = data_corrected
-# data_corrected_Treat = data_corrected[!(data_corrected$Group == 'IR'),] #use this line if you want just information about treatment groups in the end
+data_Ctrl = data_corrected[data_corrected$Group == Control,]
+# data_corrected = data_corrected[!(data_corrected$Group == 'IR'),] #use this line if you want just information about treatment groups in the end
 
 tmp_Av_Ctrl = data.frame(matrix(ncol=2, nrow=length(GOI)))
 colnames(tmp_Av_Ctrl) = c('Gene', 'Ctrl_Av_N')
@@ -275,167 +292,79 @@ colnames(tmp_Av_Ctrl) = c('Gene', 'Ctrl_Av_N')
 #Average all HKG-normalized N values for Control Group for each GOI
 for (iG in 1:length(GOI)){
     tmp_Av_Ctrl$Gene[iG] = GOI[iG]
-    tmp_Av_Ctrl$Ctrl_Av_N[iG] = mean(tmp_Ctrl$HKG_norm_N[tmp_Ctrl$Gene == GOI[iG]])
+    tmp_Av_Ctrl$Ctrl_Av_N[iG] = mean(data_Ctrl$HKG_norm_N[data_Ctrl$Gene == GOI[iG]])
 }
 
 #Relative quantity of GOI of Treatment Groups compared to Control Group
-for(iX in 1:nrow(data_corrected_Treat)){
-  tmpGene = data_corrected_Treat$Gene[iX]
-  data_corrected_Treat$Rel_quantity[iX] = data_corrected_Treat$HKG_norm_N[iX] / (tmp_Av_Ctrl$Ctrl_Av_N[tmp_Av_Ctrl$Gene == tmpGene])
+for(iX in 1:nrow(data_corrected)){
+  tmpGene = data_corrected$Gene[iX]
+  data_corrected$Rel_quantity[iX] = data_corrected$HKG_norm_N[iX] / (tmp_Av_Ctrl$Ctrl_Av_N[tmp_Av_Ctrl$Gene == tmpGene])
 }
 
 
-################################################## Calculate Mean Difference & SEM
+################################################# Compare with 2^-DeltaDeltaCq method
 
+data_corrected$DeltaDelta = deltadeltaCq(data_corrected_all, GOI, HKG, Control, Group)
+
+#summary
+data_summaryDeltaDelta = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
+colnames(data_summaryDeltaDelta) = c('Group', 'Gene', 'Mean', 'SEM')
+
+cnt=1
+for(iT in 1:length(unique(data_corrected$Group))){
+  
+  for(iG in 1:length(GOI)){
+    tmpMatrix = data_corrected$Group == unique(data_corrected$Group)[iT] & data_corrected$Gene == GOI[iG]
+    data_summaryDeltaDelta$Group[cnt] = unique(data_corrected$Group)[iT]
+    data_summaryDeltaDelta$Gene[cnt] = as.character(GOI[iG])
+    data_summaryDeltaDelta$Mean[cnt] = mean(data_corrected$DeltaDelta[tmpMatrix])
+    data_summaryDeltaDelta$SD[cnt] = sd(data_corrected$DeltaDelta[tmpMatrix])
+    data_summaryDeltaDelta$SEM[cnt] = sd(data_corrected$DeltaDelta[tmpMatrix])/sqrt(sum(tmpMatrix))
+    cnt=cnt+1
+  }
+}
+
+################################################## Calculate Mean Difference & SEM
 #summary
 data_summary = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
 colnames(data_summary) = c('Group', 'Gene', 'Mean', 'SEM')
 
 cnt=1
-for(iT in 1:length(unique(data_corrected_Treat$Group))){
+for(iT in 1:length(unique(data_corrected$Group))){
   
   for(iG in 1:length(GOI)){
-    tmpMatrix = data_corrected_Treat$Group == unique(data_corrected_Treat$Group)[iT] & data_corrected_Treat$Gene == GOI[iG]
-    data_summary$Group[cnt] = unique(data_corrected_Treat$Group)[iT]
+    tmpMatrix = data_corrected$Group == unique(data_corrected$Group)[iT] & data_corrected$Gene == GOI[iG]
+    data_summary$Group[cnt] = unique(data_corrected$Group)[iT]
     data_summary$Gene[cnt] = as.character(GOI[iG])
-    data_summary$Mean[cnt] = mean(data_corrected_Treat$Rel_quantity[tmpMatrix])
-    data_summary$SD[cnt] = sd(data_corrected_Treat$Rel_quantity[tmpMatrix])
-    data_summary$SEM[cnt] = sd(data_corrected_Treat$Rel_quantity[tmpMatrix])/sqrt(sum(tmpMatrix))
+    data_summary$Mean[cnt] = mean(data_corrected$Rel_quantity[tmpMatrix])
+    data_summary$SD[cnt] = sd(data_corrected$Rel_quantity[tmpMatrix])
+    data_summary$SEM[cnt] = sd(data_corrected$Rel_quantity[tmpMatrix])/sqrt(sum(tmpMatrix))
     cnt=cnt+1
   }
 }
 
-# ##Kick out outliers after Dixon's criterion (deviation from mean >2sd)
-# data_corrected_Treat_backup = data_corrected_Treat
-# for(idx in 1:nrow(data_corrected_Treat)){
-#   tmpSD = data_corrected_Treat$Rel_quantity[idx] - data_summary$Mean[data_summary$Gene == data_corrected_Treat$Gene[idx] &
-#                                                                        data_summary$Group == data_corrected_Treat$Group[idx]]
-#   SDx2 = 2*data_summary$SD[data_summary$Gene == data_corrected_Treat$Gene[idx] & data_summary$Group == data_corrected_Treat$Group[idx]]
-#   if(tmpSD >= SDx2){
-#     data_corrected_Treat[idx,] = NA
-#   }
-# }
-# data_corrected_Treat=na.omit(data_corrected_Treat)
-
-
-################################################## Plots
-
-#specify colors
-colHR = rgb(255, 0, 0, 255, names = 'HR', max=255)
-colIR = rgb(5,190,120, 255, names= 'IR', max=255)
-colLR = rgb(87,87,249, 255, names= 'LR', max=255)
-cols = c(colHR, colIR, colLR)
-
-ggplot(data=data_corrected_Treat, aes(x=data_corrected_Treat$Gene, y=data_corrected_Treat$Rel_quantity, fill=data_corrected_Treat$Group))+
-  stat_boxplot(position=position_dodge(.95))+
-  xlab('Genes') + ylab('Relative gene expression (normalized to IR) [AU]]') + theme(text=element_text(size = 15))+
-  theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
-  theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
-  theme(legend.direction = 'vertical', legend.justification='center')+
-  scale_fill_manual(values = cols, name='Line')
-  # geom_signif(comparison=list(c('HR', 'LR')), annotations = '***', y_position=Y_sign1, tip_length = 0, vjust=0.1)+
-  # geom_signif(comparison=list(c('HR', 'IR')), annotations = 'NS.', y_position=Y_sign2, tip_length = 0, vjust=-0.1)+
-  # geom_signif(comparison=list(c('IR', 'LR')), annotations = '***', y_position=Y_sign3, tip_length = 0, vjust=0.1)
-
-# ggplot(data=data_corrected_Treat, aes(x=data_corrected_Treat$Gene, y=data_corrected_Treat$Rel_quantity, fill=data_corrected_Treat$Group))+
-#   geom_boxplot(aes(ymin = min(data_corrected_Treat$Rel_quantity),
-#                    lower = quantile(data_corrected_Treat$Rel_quantity, 0.25),
-#                    middle = median(data_corrected_Treat$Rel_quantity),
-#                    upper = quantile(data_corrected_Treat$Rel_quantity, 0.75),
-#                    ymax = max(data_corrected_Treat$Rel_quantity)),position=position_dodge(.95))
-# #   
-# 
-ggplot(data=data_summary, aes(x=data_summary$Gene, y=data_summary$Mean, fill=data_summary$Group))+
-  geom_bar(stat='identity', position=position_dodge(.95))+
-  geom_errorbar(aes(ymin=data_summary$Mean-data_summary$SEM, ymax=data_summary$Mean+data_summary$SEM),
-                width=.8, stat='identity', position=position_dodge(.95))+
-  scale_fill_manual(values = cols, name='Line')
 
 
 
 
-################################################## Stats
-
-data_corrected_Treat$Rel_quantity[]=round(data_corrected_Treat$Rel_quantity[], digits=3)
-
-##Kruskal Wallis
-# sink('Kruskal-Wallis-Test.txt')
-for (iG in 1:length(GOI)){
-  varNames = GOI
-  print(as.character(GOI[iG]))
-  print(kruskal.test(data=data_corrected_Treat,data_corrected_Treat$Rel_quantity[data_corrected_Treat$Gene == as.character(GOI[iG])] ~ as.factor(data_corrected_Treat$Group[data_corrected_Treat$Gene == as.character(GOI[iG])])))
-  }
-# sink()
-
-#Man-Whitney-U Test
-# sink('Man-Whitney-U-Test.txt')
-for(iGr in Group){
-  for (iG in 1:length(GOI)){
-    tmpTreat = data_corrected_Treat[data_corrected_Treat$Group == Control | data_corrected_Treat$Group == iGr,]
-    varNames = GOI
-    print(as.character(GOI[iG]))
-    print(paste(iGr, 'vs.', Control))
-    print(wilcox.test(data=tmpTreat, tmpTreat$Rel_quantity[tmpTreat$Gene == as.character(GOI[iG])] ~ as.factor(tmpTreat$Group[tmpTreat$Gene == as.character(GOI[iG])])))
-  }
-}
-# sink()
-
-#Man-Whitney-U Test
-# sink('Man-Whitney-U-Test.txt')
-print(paste(Group[1], 'vs.', Group[2]))
-for (iG in 1:length(GOI)){
-  tmpTreat = data_corrected_Treat[data_corrected_Treat$Group != Control,]
-  varNames = GOI
-  print(as.character(GOI[iG]))
-  print(wilcox.test(data=tmpTreat, tmpTreat$Rel_quantity[tmpTreat$Gene == as.character(GOI[iG])] ~ as.factor(tmpTreat$Group[tmpTreat$Gene == as.character(GOI[iG])])))
-}
-# sink()
-
-for(iG in GOI){
-  for(iTr in unique(data_corrected_Treat$Group)){
-    print(sprintf('Gene: %s | Group; %s | n = %i',iG, iTr, nrow(data_corrected_Treat[data_corrected_Treat$Gene == iG & data_corrected_Treat$Group == iTr,])))
-  }
-  
-}
 
 ################################ Output
 
 #Total data
-write.xlsx(data_tot, paste(savepath,'data_total.xlsx',sep='/'))
+write.xlsx(data_tot, paste(savepath,'data_total_part3.xlsx',sep='/'))
 
 #final data, corrected to IR (only treatment groups)
-write.xlsx(data_corrected_Treat, paste(savepath,'data_corrected_Norm_to_IR.xlsx',sep='/'))
+write.xlsx(data_corrected, paste(savepath,'data_corrected_Norm_to_IR_part.xlsx',sep='/'))
 
 #exclusions
 write.xlsx(exclusions, paste(savepath,'excluded samples.xlsx',sep='/'))
 
 #IC correction factors
-write.xlsx(IC_corrFactors, paste(savepath,'IC_correctino_factors.xlsx',sep='/'))
+write.xlsx(IC_corrFactors, paste(savepath,'IC_correctino_factors_part.xlsx',sep='/'))
 
 #Efficiencies
 write.xlsx(Efficiencies, paste(savepath,'Efficiencies.xlsx',sep='/'))
 
 #final descriptive summary
 write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
-
-
-
-################################ Further plots
-#specify colors
-colHR = rgb(255, 0, 0, 255, names = 'HR', max=255)
-colIR = rgb(5,190,120, 255, names= 'IR', max=255)
-colLR = rgb(87,87,249, 255, names= 'LR', max=255)
-cols = c(colHR, colIR, colLR)
-
-
-##Stability of RefG
-ggplot(data=dataAveraged[dataAveraged$Gene %in% HKG,],
-       aes(x=(1:nrow(dataAveraged[dataAveraged$Gene %in% HKG,])),
-           y=dataAveraged$Cq[dataAveraged$Gene %in% HKG], group=dataAveraged$Gene[dataAveraged$Gene %in% HKG]))+
-  geom_line()
-
-#plot Efficiency histogram
-plotData= Efficiencies[Efficiencies$Outlier == 0,]
-ggplot(data=plotData, aes(x=plotData$Efficiency, fill=plotData$Group))+
-  geom_histogram(color='black')+ scale_fill_manual(values=cols, name='Group')+xlab('Efficiency')
 
