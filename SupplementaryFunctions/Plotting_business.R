@@ -1,5 +1,5 @@
 ##### Plotting business
-
+# install.packages('rlang')
 library(ggplot2)
 library(gridExtra)
 library(cowplot)
@@ -7,6 +7,7 @@ library(grid)
 library(ggsignif)
 library(scales)
 library(RColorBrewer)
+# library(ggpubr)
 
 #specify colors
 colHR = rgb(255, 0, 0, 255, names = 'HR', max=255)
@@ -18,8 +19,8 @@ cols = c(colHR, colIR, colLR)
 widthPlot = 12
 heightPlot = 10
 
-part='part2'
-num=3
+# part='part2'
+num=2
 
 ################################################## Mito gene expression
 savepathPlot = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis/Plots/Gene_expression'
@@ -37,7 +38,7 @@ g=ggplot(data=plotData, aes(x=Group, y=Rel_quantity, fill=Group))+
   theme(legend.direction = 'vertical', legend.justification='center')+
   scale_fill_manual(values = cols, name='Line')+ ggtitle(tmpTitle)+
   facet_wrap(~Gene)
-ggsave(paste(savepathPlot, paste(paste(part, 'BoxPlot', sep='_'), 'png', sep='.'), sep='/'), plot=g,units='cm', height=heightPlot,width=num*widthPlot, dpi=320)
+ggsave(paste(savepathPlot, paste(paste(part, 'BoxPlot', sep='_'), 'png', sep='.'), sep='/'), plot=g,units='cm', height=2*heightPlot,width=num*widthPlot, dpi=320)
 
 for(iG in GOI){
   plotData = data_corrected[data_corrected$Gene == iG,]
@@ -58,6 +59,7 @@ for(iG in GOI){
 ################################################ Method Comparison
 savepathPlot = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis/Plots/MethodComparison'
 plotData = data_corrected
+
 g=ggplot(data=plotData, aes(x=Group, y=DeltaDelta-Rel_quantity, fill=Group))+
   geom_point()+geom_violin(alpha=0.2, linetype=0)+
   xlab('Genes') + ylab('Rel. expression difference [AU]') + theme(text=element_text(size = 15))+
@@ -69,62 +71,75 @@ g=ggplot(data=plotData, aes(x=Group, y=DeltaDelta-Rel_quantity, fill=Group))+
   facet_wrap(~Gene)
 ggsave(paste(savepathPlot, paste(paste(part, 'ViolinPlot', sep='_'), 'png', sep='.'), sep='/'), plot=g, units='cm',height=heightPlot,width=widthPlot*num,dpi=320)
 
-
 for(iG in GOI){
   plotData = data_corrected[data_corrected$Gene == iG,]
-  g1 = ggplot(data=plotData, aes(x=Rel_quantity, y=DeltaDelta, color=Group))+geom_point(size=1.3)+
-    scale_x_continuous(limits=c(0.5,2))+scale_y_continuous(limits=c(0.5,2))+
-    theme(text=element_text(size = 10))+coord_equal()+
+  yAxTitle = 'Rel. expression - Delta-Delta [AU]'
+  xAxTitle = 'Rel. expression - GCD [AU]'
+  tmpLim = c(min(c(plotData$Rel_quantity, plotData$DeltaDelta)), max(c(plotData$Rel_quantity, plotData$DeltaDelta)))
+  # g1 = ggplot(data=plotData, aes(x=Rel_quantity, y=DeltaDelta, color=Group))+geom_point(size=1.3)+
+  #   scale_x_continuous(limits=c(0.5,2))+scale_y_continuous(limits=c(0.5,2))+
+  #   stat_density2d(aes(fill=Group), geom='density2d', alpha=.5, show.legend=FALSE, contour=TRUE)+
+  #   theme(text=element_text(size = 10))+coord_equal()+
+  #   theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+  #   theme(axis.title.x=element_text(margin = margin(t=10, r=0, b=0, l=0)))+
+  #   theme(axis.text = element_text(size=10))+
+  #   theme(legend.direction = 'vertical', legend.justification='center', text=element_text(size=10), legend.key.height = unit(0.8,'line'))+
+  #   scale_color_manual(values = cols, name='Line')+
+  #   geom_line(aes(x=seq(from=0,to=2,by=2/(nrow(plotData)-1)), y=seq(from=0,to=2,by=2/(nrow(plotData)-1))),color='black')+
+  #   ggtitle(iG)+theme(plot.title=element_text(size = 20))+
+  #   xlab(xAxTitle)+ylab(yAxTitle)
+  # ggsave(paste(savepathPlot, paste(iG, 'png', sep='.'), sep='/'), plot=g1, units='cm', height =heightPlot,dpi=320)
+  
+  g2=ggplot(data=plotData, aes(x=Rel_quantity, y=DeltaDelta, group=Group, color=Group))+
+    geom_point(aes(color=Group),alpha=.3, show.legend = FALSE)+
+    geom_smooth(aes(color=Group), method = lm, se=TRUE, span=2)+
+    xlab(xAxTitle) + ylab(yAxTitle) +scale_x_continuous(limits=tmpLim)+scale_y_continuous(limits = tmpLim)+
+    theme(text=element_text(size = 10))+ theme(axis.text = element_text(size=10))+coord_equal()+
     theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
     theme(axis.title.x=element_text(margin = margin(t=10, r=0, b=0, l=0)))+
-    theme(axis.text = element_text(size=10))+
-    theme(legend.direction = 'vertical', legend.justification='center', text=element_text(size=10), legend.key.height = unit(0.8,'line'))+
-    scale_color_manual(values = cols, name='Line')+
-    geom_line(aes(x=seq(from=0,to=2,by=2/(nrow(plotData)-1)), y=seq(from=0,to=2,by=2/(nrow(plotData)-1))),color='black')+
-    ggtitle(iG)+theme(plot.title=element_text(size = 20))+
-    xlab('GCD formula [AU]')+ylab('2^-DeltaDelta Cq formula [AU]')
-  
-  tmpPlotData = rbind(plotData, plotData)
-  tmpPlotData$Method[1:nrow(plotData)] = 'GCD formula'
-  tmpPlotData$Method[(nrow(plotData)+1):nrow(tmpPlotData)]= '2^-DeltaDelta Cq'
-  tmpPlotData$Rel_quantity[(nrow(plotData)+1):nrow(tmpPlotData)]=plotData$DeltaDelta
-  
-  g2=ggplot(data=tmpPlotData, aes(x=Group, y=Rel_quantity, fill=Group))+
-    stat_boxplot(position=position_dodge(.95))+geom_point(aes(color=Group),alpha=.3, show.legend = FALSE)+
-    xlab('Genes') + ylab('Rel. gene expression [AU]') + theme(text=element_text(size = 15))+
-    theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
-    theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
     theme(legend.direction = 'vertical', legend.justification='center')+
-    scale_fill_manual(values = cols, name='Line')+ ggtitle(tmpTitle)+
-    facet_wrap(~Method)+ ggtitle(paste('Method Comparison -', iG, sep=' '))+theme(plot.title=element_text(size = 20))
+    scale_fill_manual(values = cols, name='Line')+ ggtitle(iG)+theme(plot.title=element_text(size = 20))+
+    geom_line(aes(x=seq(from=0,to=2,by=2/(nrow(plotData)-1)), y=seq(from=0,to=2,by=2/(nrow(plotData)-1))),color='black')
+  ggsave(paste(savepathPlot, paste(paste(iG, 'LinReg', sep='_'), 'png', sep='.'), sep='/'), plot=g2, units='cm', height =heightPlot,dpi=320)
   
-  ggsave(paste(savepathPlot, paste(iG, 'png', sep='.'), sep='/'), plot=g1, units='cm', height =10,dpi=320)
-  ggsave(paste(savepathPlot, paste(paste(iG, 'BoxPlot', sep='_'), 'png', sep='.'), sep='/'), plot=g2,units='cm', height=heightPlot,dpi=320)
+  # tmpPlotData = rbind(plotData, plotData)
+  # tmpPlotData$Method[1:nrow(plotData)] = 'GCD formula'
+  # tmpPlotData$Method[(nrow(plotData)+1):nrow(tmpPlotData)]= '2^-DeltaDelta Cq'
+  # tmpPlotData$Rel_quantity[(nrow(plotData)+1):nrow(tmpPlotData)]=plotData$DeltaDelta
+  
+  # g2=ggplot(data=tmpPlotData, aes(x=Group, y=Rel_quantity, fill=Group))+
+  #   stat_boxplot(position=position_dodge(.95))+geom_point(aes(color=Group),alpha=.3, show.legend = FALSE)+
+  #   xlab('Genes') + ylab('Rel. gene expression [AU]') + theme(text=element_text(size = 15))+
+  #   theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+  #   theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
+  #   theme(legend.direction = 'vertical', legend.justification='center')+
+  #   scale_fill_manual(values = cols, name='Line')+ ggtitle(tmpTitle)+
+  #   facet_wrap(~Method)+ ggtitle(paste('Method Comparison -', iG, sep=' '))+theme(plot.title=element_text(size = 20))
+  # ggsave(paste(savepathPlot, paste(paste(iG, 'BoxPlot', sep='_'), 'png', sep='.'), sep='/'), plot=g2,units='cm', height=heightPlot,dpi=320)
 }
 
+######## Linear regression summary
+plotData = LinReg
+g1=ggplot(plotData, aes(x=Group, y=Slope, group=Group, fill=Group))+
+  stat_boxplot(position=position_dodge(.95))+geom_point(aes(color=Group),alpha=.3, show.legend = FALSE)+
+  xlab('') + ylab('Deviation of slope from 1') + theme(text=element_text(size = 15))+
+  theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+  theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
+  theme(legend.direction = 'vertical', legend.justification='center')+
+  scale_fill_manual(values = cols, name='Line')+ ggtitle('Deviation of slope from 1')+theme(plot.title=element_text(size = 20))
+ggsave(paste(savepathPlot, paste('LinReg_DevSlope', 'png', sep='.'), sep='/'), plot=g1, units='cm', height =heightPlot,dpi=320)
+
+g2=ggplot(plotData, aes(x=Group, y=Intercept, group=Group, fill=Group))+
+  stat_boxplot(position=position_dodge(.95))+geom_point(aes(color=Group),alpha=.3, show.legend = FALSE)+
+  xlab('') + ylab('Deviation of intercept from 0') + theme(text=element_text(size = 15))+
+  theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+  theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
+  theme(legend.direction = 'vertical', legend.justification='center')+
+  scale_fill_manual(values = cols, name='Line')+ggtitle('Deviation of intercept from 0')+theme(plot.title=element_text(size = 20))
+ggsave(paste(savepathPlot, paste('LinReg_Intercept', 'png', sep='.'), sep='/'), plot=g2, units='cm', height =heightPlot,dpi=320)
 
 
-# geom_signif(comparison=list(c('HR', 'LR')), annotations = '***', y_position=Y_sign1, tip_length = 0, vjust=0.1)+
-# geom_signif(comparison=list(c('HR', 'IR')), annotations = 'NS.', y_position=Y_sign2, tip_length = 0, vjust=-0.1)+
-# geom_signif(comparison=list(c('IR', 'LR')), annotations = '***', y_position=Y_sign3, tip_length = 0, vjust=0.1)
-# 
-# ggplot(data=plotData, aes(x=Group, y=Rel_quantity, fill=Group))+
-#   geom_boxplot(aes(ymin = min(data_corrected$Rel_quantity),
-#                    lower = quantile(data_corrected$Rel_quantity, 0.25),
-#                    middle = median(data_corrected$Rel_quantity),
-#                    upper = quantile(data_corrected$Rel_quantity, 0.75),
-#                    ymax = max(data_corrected$Rel_quantity)),position=position_dodge(.95))+
-#   scale_fill_manual(values = cols, name='Line')+
-#   facet_wrap(~Gene)
-#
-# Barplot
-ggplot(data=data_summary, aes(x=data_summary$Gene, y=data_summary$Mean, fill=data_summary$Group))+
-  geom_bar(stat='identity', position=position_dodge(.95))+
-  geom_errorbar(aes(ymin=data_summary$Mean-data_summary$SEM, ymax=data_summary$Mean+data_summary$SEM),
-                width=.8, stat='identity', position=position_dodge(.95))+
-  scale_fill_manual(values = cols, name='Line')
-
-######## Further plots
+########################################### Further plots
 
 # ##Stability of RefG
 # ggplot(data=dataAveraged[dataAveraged$Gene %in% HKG,],
@@ -155,7 +170,7 @@ g=ggplot(data=data_Ratios, aes(x=data_Ratios$Group, y=data_Ratios$Bcl2_over_Bax,
   theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
   theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
   theme(legend.direction = 'vertical', legend.justification='center')+
-  scale_fill_manual(values = cols, name='Line')+
+  scale_fill_manual(values = cols, name='Line')+geom_hline(yintercept=1, color='black', linetype=4)+
   ggtitle('Apoptosis Ratio')+theme(plot.title=element_text(size = 20))
 
 ggsave(paste(savepathPlot, paste(paste('ApoptosisRatio', 'BoxPlot', sep='_'), 'png', sep='.'), sep='/'), plot=g, units='cm',height=heightPlot,width=widthPlot,dpi=320)
@@ -184,20 +199,60 @@ ggsave(paste(savepathPlot, namePlot, sep='/'), plot=g,units='cm', height=heightP
 
 #DNA damage
 plotData = data_corrected[!is.na(data_corrected$LesionFreq),]
-tmpTitle = 'Lesion Frequency per 10kb'
-yname = 'lesion frequency'
+tmpTitle = 'Lesion Frequency'
+yname = 'Lesion frequency per 10kb'
 namePlot = 'Les_freq.png'
-g=ggplot(data=plotData, aes(x=Group, y=LesionFreq, fill=Group))+coord_equal()+
+g=ggplot(data=plotData, aes(x=Group, y=LesionFreq, fill=Group))+
   stat_boxplot(position=position_dodge(.95))+geom_point(aes(color=Group),alpha=.3, show.legend = FALSE)+
   xlab('') + ylab(yname) + theme(text=element_text(size = 15))+
   theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
   theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
-  theme(legend.direction = 'vertical', legend.justification='center')+
-  scale_fill_manual(values = cols, name='Line')+ ggtitle(tmpTitle)+
-  facet_wrap(~Gene)
+  theme(legend.direction = 'vertical', legend.justification='center')+ ggtitle(tmpTitle)+
+  scale_fill_manual(values = cols, name='Line')+facet_wrap(~Gene)
 
-ggsave(paste(savepathPlot, namePlot, sep='/'), plot=g,units='cm', height=heightPlot, width=num*widthPlot,dpi=320)
-
+ggsave(paste(savepathPlot, namePlot, sep='/'), plot=g,units='cm', height=heightPlot, width= widthPlot,dpi=320)
 
 
+######################################################### CORT correlations
+savepathPlot = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis/Plots/CORT_correlation'
+##### for each gene
+plotData_ini = data_with_CORT
+tmpGOI = as.character(unique(data_with_CORT$Gene))
+for(iG in tmpGOI){
+  plotData = plotData_ini[plotData_ini$Gene == iG,]
+  yAxTitle = 'Rel. expression [AU]'
+  xAxTitle = 'CORT [ng/ml]'
+  plotTitle = paste('Correlation CORT - Rel expression', iG,sep=': ')
+  g=ggplot(data=plotData, aes(x=CORT, y=Rel_quantity))+
+    geom_point(alpha=.3, show.legend = FALSE)+
+    geom_smooth(method = lm, se=TRUE)+
+    xlab(xAxTitle) + ylab(yAxTitle) +
+    theme(text=element_text(size = 10))+ theme(axis.text = element_text(size=10))+
+    theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+    theme(axis.title.x=element_text(margin = margin(t=10, r=0, b=0, l=0)))+
+    theme(legend.direction = 'vertical', legend.justification='center')+
+    scale_fill_manual(values = cols, name='Line')+ ggtitle(plotTitle)+theme(plot.title=element_text(size = 20))
+  ggsave(paste(savepathPlot, paste(paste(iG, 'corr_CORT', sep='_'), 'png', sep='.'), sep='/'), plot=g, units='cm', height =heightPlot,dpi=320)
+}
 
+
+##### for each gene separate lines
+plotData_ini = data_with_CORT
+tmpGOI = as.character(unique(data_with_CORT$Gene))
+for(iG in tmpGOI){
+  plotData = plotData_ini[plotData_ini$Gene == iG,]
+  yAxTitle = 'Rel. expression [AU]'
+  xAxTitle = 'CORT [ng/ml]'
+  plotTitle = paste('Correlation CORT - Rel expression', iG,sep=': ')
+  g=ggplot(data=plotData, aes(x=CORT, y=Rel_quantity, color=Group))+
+    geom_point(alpha=.3, show.legend = FALSE)+
+    geom_smooth(method = lm, se=TRUE)+
+    xlab(xAxTitle) + ylab(yAxTitle) +
+    theme(text=element_text(size = 10))+ theme(axis.text = element_text(size=10))+
+    theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+    theme(axis.title.x=element_text(margin = margin(t=10, r=0, b=0, l=0)))+
+    theme(legend.direction = 'vertical', legend.justification='center')+
+    scale_fill_manual(values = cols, name='Line')+ ggtitle(plotTitle)+theme(plot.title=element_text(size = 20))
+  ggsave(paste(savepathPlot, paste(paste(iG, 'corr_CORT_Groups', sep='_'), 'png', sep='.'), sep='/'), plot=g, units='cm', height =heightPlot,dpi=320)
+}
+  

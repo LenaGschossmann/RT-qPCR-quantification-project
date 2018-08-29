@@ -27,7 +27,7 @@
 # 8) For each GOI, average N across treatment group animals
 # 9) Again Outlier correction?
 
-
+# install.packages('Rcpp')
 # Sys.setenv(JAVA_HOME= 'C:\\Users\\lena_\\Downloads\\Matlab 2017a\\_temp_matlab_R2017a_win64\\sys\\java\\jre\\win64\\jre')
 # library(rJava)
 library(openxlsx)
@@ -42,6 +42,8 @@ options(decimals=5)
 setwd('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/')
 filepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis'
 
+part = 'part3'
+
 ##### Input
 numRepl = 2 #number of technical replicates
 HKG = c('HPRT', 'GAPDH') #number of housekeeping genes
@@ -52,6 +54,10 @@ exclude_weirdEffs = 1 # set to one if outlier >/< mean+/- 2sd shall be eliminate
 effsOuttaRange = 1  #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
 methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
 # cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
+
+effUpperBond = 0 #set to 1 if all efficiencies > 2 should be set to 2 as they are artefacts
+effTakeMean = 0 #set to 1 if the mean of the gene's efficiency should be used
+
 excludeAnimal = c('17')
 IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
 
@@ -112,7 +118,7 @@ source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroB
 
 # import data from CFX manager exported excel table that has been collected in 1 excel
 # the imported data table shall have following columns: plate, date, threshold, animal, group, well, Gene, Cq value
-data_tot = read.csv(paste(filepath, 'part3.csv', sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
+data_tot = read.csv(paste(filepath, paste(part,'csv', sep='.'), sep='/'), dec='.', sep=';', stringsAsFactors = FALSE)
 colnames(data_tot) = c('Threshold', 'Plate', 'Well', 'Gene', 'Animal', 'Group', 'Cq')
 data_tot = data_tot[which(data_tot$Animal != 'NTC'),]  #Kick out NTCs
 data_tot = data_tot[!(is.na(data_tot$Cq)),]
@@ -251,6 +257,27 @@ if(exclude_weirdEffs == 1){
   exclusions = exclusions[!(exclusions$Plate == 0),]
 }
 
+
+########## use mean of efficiency
+if(effTakeMean == 1){
+  for(iPl in plates){
+    tmpGenes = unique(Efficiencies$Gene[Efficiencies$Plate == iPl])
+    for(iG in tmpGenes){
+      tmpMean = mean(Efficiencies$Efficiency[Efficiencies$Gene == iG & Efficiencies$Plate == iPl])
+      Efficiencies$Efficiency[Efficiencies$Gene == iG & Efficiencies$Plate == iPl]= tmpMean
+    }
+  }
+  
+}
+
+
+######### set all efficiencies > 2 to 2
+if(effUpperBond == 1){
+   Efficiencies$Efficiency[Efficiencies$Efficiency > 2] = 2
+}
+
+
+
 ################################################## 1. Normalization (to HKGs)
 #N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample  |  K: is going to chancel out in the second normalization step later, so wee dont regard it here | the '1' in front of the 'E' is not needed since efficiency already between 1 and 2
 # N here is the ratio of initial amount of target gene over initial amount of reference gene
@@ -324,6 +351,7 @@ for(iT in 1:length(unique(data_corrected$Group))){
   }
 }
 
+
 ################################################## Calculate Mean Difference & SEM
 #summary
 data_summary = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
@@ -345,26 +373,22 @@ for(iT in 1:length(unique(data_corrected$Group))){
 
 
 
+################################################### Output
+#Save Corrected data
+write.csv(data_corrected, paste(savepath,paste(part, 'data_corrected.csv', sep='_'),sep='/'))
 
-
-
-################################ Output
-
-#Total data
-write.xlsx(data_tot, paste(savepath,'data_total_part3.xlsx',sep='/'))
-
-#final data, corrected to IR (only treatment groups)
-write.xlsx(data_corrected, paste(savepath,'data_corrected_Norm_to_IR_part.xlsx',sep='/'))
-
-#exclusions
-write.xlsx(exclusions, paste(savepath,'excluded samples.xlsx',sep='/'))
-
-#IC correction factors
-write.xlsx(IC_corrFactors, paste(savepath,'IC_correctino_factors_part.xlsx',sep='/'))
-
-#Efficiencies
-write.xlsx(Efficiencies, paste(savepath,'Efficiencies.xlsx',sep='/'))
-
-#final descriptive summary
-write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
+# #final data, corrected to IR (only treatment groups)
+# write.xlsx(data_corrected, paste(savepath,'data_corrected_Norm_to_IR_part.xlsx',sep='/'))
+# 
+# #exclusions
+# write.xlsx(exclusions, paste(savepath,'excluded samples.xlsx',sep='/'))
+# 
+# #IC correction factors
+# write.xlsx(IC_corrFactors, paste(savepath,'IC_correctino_factors_part.xlsx',sep='/'))
+# 
+# #Efficiencies
+# write.xlsx(Efficiencies, paste(savepath,'Efficiencies.xlsx',sep='/'))
+# 
+# #final descriptive summary
+# write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
 

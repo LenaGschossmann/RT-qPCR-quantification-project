@@ -52,6 +52,10 @@
   effsOuttaRange = 0  #set to 1 when samples with efficiencies <1.9 or >2.1 shall be excluded
   methodEff = 'cpD2' #determines from which point the efficiency is calculated (for clarification see: qpcR documentation)
   # cpD2: max of sec. derivative | cpD1: max of first derivative | maxE: max of efficiency curve | expR: from exponential region=cpD2-(cpD1-cpD2)
+  
+  effUpperBond = 0 #set to 1 if all efficiencies > 2 should be set to 2 as they are artefacts
+  effTakeMean = 0 #set to 1 if the mean of the gene's efficiency should be used
+  
   excludeAnimal = c('17')
   IC_correction = 1 #set to 1 if there is an Internal Control on every plate that should be used for correction of interplate variability; else set 0
   
@@ -115,8 +119,8 @@
   Treatments = c(Group, Control)
   geneSize = data.frame(matrix(ncol=2, nrow=length(GOI)))
   colnames(geneSize)=c('Gene', 'Size')
-  geneSize[1,]=c('D-Loop', 11.19)
-  geneSize[2,] = c('Cox3', 11.29)
+  geneSize[1,]=c('D-Loop', 1.119)
+  geneSize[2,] = c('Cox3', 1.129)
   #####
   
   ## Substitute Well names (A01 -> A1) for compatibility reasons
@@ -240,6 +244,24 @@
     exclusions = exclusions[!(exclusions$Plate == 0),]
   }
   
+  ########## use mean of efficiency
+  if(effTakeMean == 1){
+    for(iPl in plates){
+      tmpGenes = unique(Efficiencies$Gene[Efficiencies$Plate == iPl])
+      for(iG in tmpGenes){
+        tmpMean = mean(Efficiencies$Efficiency[Efficiencies$Gene == iG & Efficiencies$Plate == iPl])
+        Efficiencies$Efficiency[Efficiencies$Gene == iG & Efficiencies$Plate == iPl]= tmpMean
+      }
+    }
+    
+  }
+  
+  
+  ######### set all efficiencies > 2 to 2
+  if(effUpperBond == 1){
+    Efficiencies$Efficiency[Efficiencies$Efficiency > 2] = 2
+  }
+  
   
   ################################################# Calculations
   
@@ -312,26 +334,26 @@
   
   
   
-  ################################################## Calculate Mean Difference & SEM
-  
-  #summary
-  data_summary = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
-  colnames(data_summary) = c('Group', 'Gene', 'Mean', 'SEM')
-  
-  cnt=1
-  for(iT in 1:length(unique(data_corrected_Treat$Group))){
-    
-    for(iG in 1:length(GOI)){
-      tmpMatrix = data_corrected_Treat$Group == unique(data_corrected_Treat$Group)[iT] & data_corrected_Treat$Gene == GOI[iG]
-      data_summary$Group[cnt] = unique(data_corrected_Treat$Group)[iT]
-      data_summary$Gene[cnt] = as.character(GOI[iG])
-      data_summary$Mean[cnt] = mean(data_corrected_Treat$mtCN[tmpMatrix])
-      data_summary$SD[cnt] = sd(data_corrected_Treat$mtCN[tmpMatrix])
-      data_summary$SEM[cnt] = sd(data_corrected_Treat$mtCN[tmpMatrix])/sqrt(sum(tmpMatrix))
-      cnt=cnt+1
-    }
-  }
-  
+  # ################################################## Calculate Mean Difference & SEM
+  # 
+  # #summary
+  # data_summary = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
+  # colnames(data_summary) = c('Group', 'Gene', 'Mean', 'SEM')
+  # 
+  # cnt=1
+  # for(iT in 1:length(unique(data_corrected_Treat$Group))){
+  #   
+  #   for(iG in 1:length(GOI)){
+  #     tmpMatrix = data_corrected_Treat$Group == unique(data_corrected_Treat$Group)[iT] & data_corrected_Treat$Gene == GOI[iG]
+  #     data_summary$Group[cnt] = unique(data_corrected_Treat$Group)[iT]
+  #     data_summary$Gene[cnt] = as.character(GOI[iG])
+  #     data_summary$Mean[cnt] = mean(data_corrected_Treat$mtCN[tmpMatrix])
+  #     data_summary$SD[cnt] = sd(data_corrected_Treat$mtCN[tmpMatrix])
+  #     data_summary$SEM[cnt] = sd(data_corrected_Treat$mtCN[tmpMatrix])/sqrt(sum(tmpMatrix))
+  #     cnt=cnt+1
+  #   }
+  # }
+  # 
   
   
   ################################ Output
