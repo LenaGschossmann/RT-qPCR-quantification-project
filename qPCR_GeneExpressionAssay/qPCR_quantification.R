@@ -6,16 +6,17 @@
 
 ## Analysis-Procedure
 # 1) check similarity of Cq of replicates and calculate CV, exclude outliers
-# 2) qpcR_Efficiencies:
+# 2) Average all Cq values of the Internal Control (IC) and set them as 100%
+#     -> calculate correction factor for IC genes of each plate according to the 100% af the averaged value
+#     -> correct each gene on each plate by the respective genes IC_correction factor for the respective plate
+# 3) Calculate preliminary statistics (Mean, SD) per Treatment group, per gene
+# 4) Exclude outliers according to Dixon's criterion: (sample-mean)>=2*sd
+# 5) qpcR_Efficiencies:
 #     - import raw data of each amplification cycle and fit multi-parametrical model
 #       ((weighted) nonlinear least-squares (Levenberg-Marquardt) fitting) on combined replicates
 #     --> efficiency is obtained from F_n / F_(n-1) where F is raw fluorescence and n the cycle number
 #     For literature, see: A new method for robust quantitative and qualitative analysis of real-time PCR. Shain EB & Clemens JM.Nucleic Acids Research (2008), 36, e91.
-# 3) Average all Cq values of the Internal Control (IC) and set them as 100%
-#     -> calculate correction factor for IC genes of each plate according to the 100% af the averaged value
-#     -> correct each gene on each plate by the respective genes IC_correction factor for the respective plate
-# 4) Calculate preliminary statistics (Mean, SD) per Treatment group, per gene
-# 5) Exclude outliers according to Dixon's criterion: (sample-mean)>=2*sd
+#     - Exclude efficiencies outside certain range if option activated
 # 6) Relatively quantify the expression of each of the genes of interest (GOI) in relation to the average of the housekeeping genes (HKG)
 #     (herefore the above estimated efficiencies are used)
 #     ! N = K*(1+Eff_ref)^Cq_ref/(1+Eff_sample)^Cq_sample (for Efficiency as between 1 and 2)
@@ -25,7 +26,9 @@
 #     -> For each GOI, average the N from step 6) across all Control group animals
 #     -> For each GOI, relate N from step 6) of each each Treatment group animal to the respective control group averaged N
 # 8) For each GOI, average N across treatment group animals
-# 9) Again Outlier correction?
+# 9) Calculate relative quantity also with Livak's (2001) 2^(-DeltaDelta_Cq)-method
+
+##############################################################
 
 library(openxlsx)
 library(qpcR)
