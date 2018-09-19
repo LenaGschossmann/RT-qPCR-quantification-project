@@ -14,7 +14,7 @@ setwd('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo
 # statData = Subgroup_anhedonic[,c(1,2,5,8,11,12,13,14,15)]
 
 statData = raw_cleaned
-colnames(statData)[1]= 'Line'
+colnames(statData)[2]= 'Line'
 # statData=statData[statData$Mouse_Subline==1,]
 # statData=statData[statData$Mouse_Subline==2,]
 statData$Line[statData$Line == 1] ='HR'
@@ -85,7 +85,7 @@ for(iGr in unique(statData$Line)){
 ###### SPT test subgroups
 statData = Subgroup_anhedonic
 statData2 = Subgroup_hedonic
-colnames(statData)[1]= 'Line'
+colnames(statData)[2]= 'Line'
 statData$Line[statData$Line == 1] ='HR'
 statData$Line[statData$Line == 2] ='IR'
 statData$Line[statData$Line == 3] ='LR'
@@ -102,6 +102,43 @@ for(iGr in unique(statData$Line)){
   # print(t.test(tmpData$per_AV, mu =65))
 }
 
+##### Av rel intake within groups between habituation, 2.5% forced and SPT
+# 2.5% rel total intake vs rel av total intake during SPT
+for(iGr in unique(statData$Line)){
+  tmp_statData = statData[statData$Line == iGr,]
+  tmpD = rbind(tmp_statData, tmp_statData)
+  tmpD$IDX[1:nrow(tmp_statData)] = '2.5_Sucrose'
+  tmpD$ColOFinterest[1:nrow(tmp_statData)] = tmp_statData$Rel_Suc
+  tmpD$IDX[(nrow(tmp_statData)+1):nrow(tmpD)] = 'Av.Rel.Suc'
+  tmpD$ColOFinterest[(nrow(tmp_statData)+1):nrow(tmpD)] = tmp_statData$Av_rel_TOT
+  print(iGr)
+  print(wilcox.test(data=tmpD,ColOFinterest ~ IDX))
+}
+
+
+# 2.5% rel total intake vs rel av total intake during habituation
+for(iGr in unique(statData$Line)){
+  tmp_statData = statData[statData$Line == iGr,]
+  tmpD = rbind(tmp_statData, tmp_statData)
+  tmpD$IDX[1:nrow(tmp_statData)] = '2.5_Sucrose'
+  tmpD$ColOFinterest[1:nrow(tmp_statData)] = tmp_statData$Rel_Suc
+  tmpD$IDX[(nrow(tmp_statData)+1):nrow(tmpD)] = 'Av_Total_Habituation_without_Suc'
+  tmpD$ColOFinterest[(nrow(tmp_statData)+1):nrow(tmpD)] = tmp_statData$Av_Rel_H_noSuc
+  print(iGr)
+  print(wilcox.test(data=tmpD,ColOFinterest ~ IDX))
+}
+
+# SPT rel total intake vs rel av total intake during habituation
+for(iGr in unique(statData$Line)){
+  tmp_statData = statData[statData$Line == iGr,]
+  tmpD = rbind(tmp_statData, tmp_statData)
+  tmpD$IDX[1:nrow(tmp_statData)] = 'AvRelTotalSucrose'
+  tmpD$ColOFinterest[1:nrow(tmp_statData)] = tmp_statData$Av_rel_TOT
+  tmpD$IDX[(nrow(tmp_statData)+1):nrow(tmpD)] = 'Av_Total_Habituation_without_Suc'
+  tmpD$ColOFinterest[(nrow(tmp_statData)+1):nrow(tmpD)] = tmp_statData$Av_Rel_H_noSuc
+  print(iGr)
+  print(wilcox.test(data=tmpD,ColOFinterest ~ IDX))
+}
 
 
 ############################################# Print n per group

@@ -95,7 +95,7 @@
   source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
   source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
   source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
-  source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_GeneExpressionAssay/deltadeltaCq.R')
+  source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/deltadeltaCq.R')
   
   ####################################################################################
   
@@ -265,16 +265,15 @@
   
   ################################################# Calculations
   
-  for(iRow in 1:nrow(data_corrected)){
+    for(iRow in 1:nrow(data_corrected)){
     #calculate (E)^Cq
     tmpGene = data_corrected$Gene[iRow]
     tmpAnimal = data_corrected$Animal[iRow]
     tmpPlate = data_corrected$Plate[iRow]
     tmp_eff = Efficiencies$Efficiency[Efficiencies$Gene == tmpGene & Efficiencies$Animal == tmpAnimal & Efficiencies$Plate == tmpPlate]
     data_corrected$Quant[iRow] = (tmp_eff)^(data_corrected$IC_corr_Cq[data_corrected$Animal == tmpAnimal & data_corrected$Gene == tmpGene])
+    data_corrected$Quant_DeltaDelta[iRow] = 2^(data_corrected$IC_corr_Cq[data_corrected$Animal == tmpAnimal & data_corrected$Gene == tmpGene])
   }
-  
-  
   
   ################################################## mt Copy number
   #####1. Normalization (to HKGs)
@@ -284,8 +283,12 @@
   for(iPl in plates){
     for (iA in unique(data_corrected$Animal[data_corrected$Plate == iPl])){
       tmp_mtCN = data_corrected$Quant[data_corrected$Animal == iA & data_corrected$Gene == 'GAPDH' & data_corrected$Plate == iPl] /
-        data_corrected$Quant[data_corrected$Animal == iA & data_corrected$Gene == 'shMito' & data_corrected$Plate == iPl]
+      data_corrected$Quant[data_corrected$Animal == iA & data_corrected$Gene == 'shMito' & data_corrected$Plate == iPl]
       data_corrected$mtCN[data_corrected$Animal == iA & data_corrected$Gene == 'shMito' & data_corrected$Plate == iPl] = tmp_mtCN
+      #DeltaDelta
+      tmp_mtCN_DD = data_corrected$Quant_DeltaDelta[data_corrected$Animal == iA & data_corrected$Gene == 'GAPDH' & data_corrected$Plate == iPl] /
+      data_corrected$Quant_DeltaDelta[data_corrected$Animal == iA & data_corrected$Gene == 'shMito' & data_corrected$Plate == iPl]
+      data_corrected$mtCN_DeltaDelta[data_corrected$Animal == iA & data_corrected$Gene == 'shMito' & data_corrected$Plate == iPl] = tmp_mtCN_DD
     }
   }
   
@@ -299,25 +302,35 @@
   data_Ctrl = data_corrected[data_corrected$Group == Control,]
   #Average all HKG-normalized N values for Control Group for shMito
   tmp_Av_Ctrl = mean(data_Ctrl$Quant[data_Ctrl$Gene == 'shMito'])
+  tmp_Av_Ctrl_DD = mean(data_Ctrl$Quant_DeltaDelta[data_Ctrl$Gene == 'shMito'])  
   
   #Relative quantity of shMito of Treatment Groups compared to Control Group
   for(iX in which(data_corrected$Gene=='shMito')){
     data_corrected$mtCN[iX] = data_corrected$Quant[iX] / tmp_Av_Ctrl
+    data_corrected$mtCN_DeltaDelta[iX] = data_corrected$Quant_DeltaDelta[iX] / tmp_Av_Ctrl_DD
   }
+
   
-  Av_shMito = mean(data_corrected$mtCN[which(data_corrected$Gene=='shMito')])
+
   
   ################################################## Calculate Lesion frequencies
   # following 
   #1)  E_Cq(D-Loop) / (E_Cq(shMito)/Av_E_Cq_shMito)
   #2) IR correction
   
+  Av_shMito = mean(data_corrected$Quant[which(data_corrected$Gene=='shMito')])
+  Av_shMito_DD = mean(data_corrected$Quant_DeltaDelta[which(data_corrected$Gene=='shMito')])
+  
   for(iPl in plates){
     for(iA in unique(data_corrected$Animal[data_corrected$Plate == iPl])){
       tmp_shMito = data_corrected$Quant[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == 'shMito']
+      tmp_shMito_DD = data_corrected$Quant_DeltaDelta[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == 'shMito']
       for(iG in GOI){
-        tmpVal = data_corrected$Quant[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == iG] / (tmp_shMito /tmp_shMito)
+        tmpVal = data_corrected$Quant[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == iG] / (tmp_shMito /Av_shMito)
         data_corrected$LesionFreq[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == iG] = tmpVal
+        #DeltaDelta
+        tmpVal_DD = data_corrected$Quant_DeltaDelta[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == iG] / (tmp_shMito_DD /Av_shMito_DD)
+        data_corrected$LesionFreq_DeltaDelta[data_corrected$Plate == iPl & data_corrected$Animal == iA & data_corrected$Gene == iG] = tmpVal_DD
       }
     }
   }
@@ -325,9 +338,13 @@
   #take IR average and divide the other genes value by it
   for(iG in 1:length(GOI)){
     tmp_Av_Ctrl = mean(data_corrected$LesionFreq[data_corrected$Gene == GOI[iG] & data_corrected$Group == Control])
+    tmp_Av_Ctrl_DD = mean(data_corrected$LesionFreq_DeltaDelta[data_corrected$Gene == GOI[iG] & data_corrected$Group == Control])
     for(iRow in which(data_corrected$Gene == GOI[iG])){
       data_corrected$LesionFreq[iRow] = data_corrected$LesionFreq[iRow] / tmp_Av_Ctrl
       data_corrected$LesionFreq[iRow] = (-log(data_corrected$LesionFreq[iRow]))*(10/as.numeric(geneSize$Size[geneSize$Gene == GOI[iG]]))
+      #DeltaDelta
+      data_corrected$LesionFreq_DeltaDelta[iRow] = data_corrected$LesionFreq_DeltaDelta[iRow] / tmp_Av_Ctrl_DD
+      data_corrected$LesionFreq_DeltaDelta[iRow] = (-log(data_corrected$LesionFreq_DeltaDelta[iRow]))*(10/as.numeric(geneSize$Size[geneSize$Gene == GOI[iG]]))
     }
   }
   
@@ -336,46 +353,86 @@
   
   # ################################################## Calculate Mean Difference & SEM
   # 
-  # #summary
-  # data_summary = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
-  # colnames(data_summary) = c('Group', 'Gene', 'Mean', 'SEM')
-  # 
-  # cnt=1
-  # for(iT in 1:length(unique(data_corrected_Treat$Group))){
-  #   
-  #   for(iG in 1:length(GOI)){
-  #     tmpMatrix = data_corrected_Treat$Group == unique(data_corrected_Treat$Group)[iT] & data_corrected_Treat$Gene == GOI[iG]
-  #     data_summary$Group[cnt] = unique(data_corrected_Treat$Group)[iT]
-  #     data_summary$Gene[cnt] = as.character(GOI[iG])
-  #     data_summary$Mean[cnt] = mean(data_corrected_Treat$mtCN[tmpMatrix])
-  #     data_summary$SD[cnt] = sd(data_corrected_Treat$mtCN[tmpMatrix])
-  #     data_summary$SEM[cnt] = sd(data_corrected_Treat$mtCN[tmpMatrix])/sqrt(sum(tmpMatrix))
-  #     cnt=cnt+1
-  #   }
-  # }
-  # 
+  #summary LesionFreq
+  data_summary = data.frame(matrix(ncol=4, nrow=3*length(GOI))) #Mean and SEM per GOI per Group
+  colnames(data_summary) = c('Group', 'Gene', 'Mean', 'SEM')
+  cnt=1
+  for(iT in 1:length(unique(data_corrected$Group))){
+    for(iG in 1:length(GOI)){
+      tmpMatrix = data_corrected$Group == unique(data_corrected$Group)[iT] & data_corrected$Gene == GOI[iG]
+      data_summary$Group[cnt] = unique(data_corrected$Group)[iT]
+      data_summary$Gene[cnt] = as.character(GOI[iG])
+      data_summary$Mean[cnt] = mean(data_corrected$LesionFreq[tmpMatrix])
+      data_summary$SD[cnt] = sd(data_corrected$LesionFreq[tmpMatrix])
+      data_summary$SEM[cnt] = sd(data_corrected$LesionFreq[tmpMatrix])/sqrt(sum(tmpMatrix))
+      cnt=cnt+1
+    }
+  }
+  
+  #summary mtDNA
+  data_summary_mtDNA = data.frame(matrix(ncol=3, nrow=3)) #Mean and SEM per GOI per Group
+  colnames(data_summary_mtDNA) = c('Group', 'Mean', 'SEM')
+  tmp_data_corrected = data_corrected[data_corrected$Gene == 'shMito',]
+  cnt=1
+  for(iT in 1:length(unique(tmp_data_corrected$Group))){
+      tmpMatrix = tmp_data_corrected$Group == unique(tmp_data_corrected$Group)[iT]
+      data_summary_mtDNA$Group[cnt] = unique(tmp_data_corrected$Group)[iT]
+      data_summary_mtDNA$Mean[cnt] = mean(tmp_data_corrected$mtCN[tmpMatrix])
+      data_summary_mtDNA$SD[cnt] = sd(tmp_data_corrected$mtCN[tmpMatrix])
+      data_summary_mtDNA$SEM[cnt] = sd(tmp_data_corrected$mtCN[tmpMatrix])/sqrt(sum(tmpMatrix))
+      cnt=cnt+1
+  }
+  
+  #LesionFreq across groups
+  #summary LesionFreq
+  data_summary_LesF = data.frame(matrix(ncol=3, nrow=length(GOI))) #Mean and SEM per GOI per Group
+  colnames(data_summary_LesF) = c('Gene', 'Mean', 'SEM')
+  cnt=1
+    for(iG in 1:length(GOI)){
+      tmpMatrix = data_corrected$Gene == GOI[iG]
+      data_summary_LesF$Gene[cnt] = as.character(GOI[iG])
+      data_summary_LesF$Mean[cnt] = mean(data_corrected$LesionFreq[tmpMatrix])
+      data_summary_LesF$SD[cnt] = sd(data_corrected$LesionFreq[tmpMatrix])
+      data_summary_LesF$SEM[cnt] = sd(data_corrected$LesionFreq[tmpMatrix])/sqrt(sum(tmpMatrix))
+      cnt=cnt+1
+  }
+  
   
   
   ################################ Output
   
+  # Export Means+SEM table
+  #Lesion Freq
+  write.xlsx(data_summary, paste('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/qPCR_DNA_damage/analysis/R_analysis',
+                                  'LesionFreq_DescripStats.xlsx',sep='/'))
+  
+  #mtDNA CN
+  write.xlsx(data_summary_mtDNA, paste('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/qPCR_DNA_damage/analysis/R_analysis',
+                                 'mtDNAcn_DescripStats.xlsx',sep='/'))
+  
+  #mtDNA CN
+  write.xlsx(data_summary_LesF, paste('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/qPCR_DNA_damage/analysis/R_analysis',
+                                       'LesF_across_groups_DescripStats.xlsx',sep='/'))
+  
+  
   #Total data
-  write.xlsx(data_tot, paste(savepath,'data_total.xlsx',sep='/'))
+  write.xlsx(data_corrected, paste(savepath,'DNA_damage_assay.xlsx',sep='/'))
   
-  #final data, corrected to IR (only treatment groups)
-  write.xlsx(data_corrected_Treat, paste(savepath,'data_corrected_Norm_to_IR.xlsx',sep='/'))
-  
-  #exclusions
-  write.xlsx(exclusions, paste(savepath,'excluded samples.xlsx',sep='/'))
-  
-  #IC correction factors
-  write.xlsx(IC_corrFactors, paste(savepath,'IC_correctino_factors.xlsx',sep='/'))
-  
-  #Efficiencies
-  write.xlsx(Efficiencies, paste(savepath,'Efficiencies.xlsx',sep='/'))
-  
-  #final descriptive summary
-  write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
-  
-  
+  # #final data, corrected to IR (only treatment groups)
+  # write.xlsx(data_corrected_Treat, paste(savepath,'data_corrected_Norm_to_IR.xlsx',sep='/'))
+  # 
+  # #exclusions
+  # write.xlsx(exclusions, paste(savepath,'excluded samples.xlsx',sep='/'))
+  # 
+  # #IC correction factors
+  # write.xlsx(IC_corrFactors, paste(savepath,'IC_correctino_factors.xlsx',sep='/'))
+  # 
+  # #Efficiencies
+  # write.xlsx(Efficiencies, paste(savepath,'Efficiencies.xlsx',sep='/'))
+  # 
+  # #final descriptive summary
+  # write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
+  # 
+  # 
   
   

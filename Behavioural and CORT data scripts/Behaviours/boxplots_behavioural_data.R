@@ -25,14 +25,15 @@ savepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_
 raw_cleaned$Mouse_Line[raw_cleaned$Mouse_Line == 1] ='HR'
 raw_cleaned$Mouse_Line[raw_cleaned$Mouse_Line == 2] ='IR'
 raw_cleaned$Mouse_Line[raw_cleaned$Mouse_Line == 3] ='LR'
+# colnames(raw_cleaned)[2] = 'Mouse_Line'
 
 plotData = raw_cleaned
 
-plotTitle='Average Sucrose Preference'
-yname='Average Sucrose Preference [%]'
-saveVarName = c('per_AV')
+plotTitle='Average Relative Food Intake'
+yname='Rel. Food Intake [g/g BW]'
+saveVarName = c('food_intake_per_BW')
 yIdx = which(variable.names(plotData) == saveVarName)
-limY=c(0,100)
+limY=c(0.05,0.2)
 
 plt = ggplot(data = plotData, aes(x=Mouse_Line, y = plotData[,yIdx], group = Mouse_Line, fill = Mouse_Line))+
   geom_boxplot(outlier.color="black", outlier.stroke=1, outlier.shape=5, position=position_dodge(1))+
@@ -101,8 +102,18 @@ ggsave(paste(savepath,paste(paste(saveVarName, 'SublineB', sep='_'), 'png', sep=
 #   theme(legend.direction = 'vertical', legend.justification='center')+
 #   scale_color_manual(values = cols, name='Line', labels=c('HR', 'IR','LR'), guide=FALSE)
 
-
-
+#correlate Sucr Preference and Av. Water Intake
+plotData = raw_cleaned[raw_cleaned$Mouse_Line == 'HR',]
+yLimit=c(0,0.4)
+ggplot(data = plotData, aes(x=Av_H_TOT, y = Av_rel_TOT, group = Mouse_Line, color = Mouse_Line))+
+  scale_fill_manual(values = cols, name='Line', labels=c('HR', 'IR','LR'))+
+  scale_y_continuous(limits=yLimit)+
+  xlab('Av. Water') + ylab('Av. Sucrose Preference') + theme(text=element_text(size = 15))+
+  theme(axis.title.y=element_text(margin = margin(t=0, r=10, b=0, l=0))) +
+  theme(axis.title.x=element_text(margin = margin(t=5, r=0, b=0, l=0)))+
+  theme(legend.direction = 'vertical', legend.justification='center')+
+  geom_point(size=3, alpha=0.4)+
+  scale_color_manual(values = cols, name='Line', labels=c('HR', 'IR','LR'), guide=FALSE)
 
 
 ###################################################### Boxplots cohort VR
@@ -110,11 +121,11 @@ ggsave(paste(savepath,paste(paste(saveVarName, 'SublineB', sep='_'), 'png', sep=
 savepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Behavioural tests/Cohort VR/plots'
 
 plotData = raw_cleaned
-plotTitle='Relative Total WAT'
-yname = 'Relative Total WAT [mg/g BW]'
-saveVarName = 'Total.WAT_mg_per_gBW'
+plotTitle='Total distance'
+yname = 'Total Distance [m]'
+saveVarName = 'Tot_distance'
 yIdx = which(variable.names(plotData) == saveVarName)
-limY = c(20,70)
+limY = c(0,75)
 
 plt = ggplot(data = plotData, aes(x=Line, y = plotData[,yIdx], group = Line, fill = Line))+
   geom_boxplot(outlier.color="black", outlier.stroke=1, outlier.shape=5, position=position_dodge(1))+

@@ -1,4 +1,19 @@
 ##################################################### Method comparison - Linear Regression
+# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_GeneExpressionAssay/getCORT.R')
+source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/CORT/getCORT.R')
+
+savepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis/R_analysis'
+
+
+
+#...after all parts have been saved separately:
+x1=read.csv(paste(savepath, 'part1_data_corrected.csv', sep='/'))
+x2=read.csv(paste(savepath, 'part2_data_corrected.csv', sep='/'))
+x3=read.csv(paste(savepath, 'part3_data_corrected.csv', sep='/'))
+data_corrected_tot = rbind(x1, rbind(x2, x3))
+
+
+
 # Pearson's R for each gene
 statsData = data_corrected_tot
 tmpGroups = unique(statsData$Group)
@@ -40,3 +55,10 @@ write.xlsx(corr_coeffs, paste(savepath,'Corr_coefficients_MetComparison.xlsx',se
 # 
 # #Kruskal-Wallis-Test
 # print(kruskal.test(data=LinReg,LinReg$Intercept ~ as.factor(LinReg$Group)))
+
+
+########################### Mean Square Deviation from Slope=1-Line
+
+
+
+

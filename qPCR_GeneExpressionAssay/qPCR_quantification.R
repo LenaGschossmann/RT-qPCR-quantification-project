@@ -27,9 +27,6 @@
 # 8) For each GOI, average N across treatment group animals
 # 9) Again Outlier correction?
 
-# install.packages('Rcpp')
-# Sys.setenv(JAVA_HOME= 'C:\\Users\\lena_\\Downloads\\Matlab 2017a\\_temp_matlab_R2017a_win64\\sys\\java\\jre\\win64\\jre')
-# library(rJava)
 library(openxlsx)
 library(qpcR)
 
@@ -106,12 +103,12 @@ savepath = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_
 # source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
 # source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
 # source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
-# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_GeneExpressionAssay/deltadeltaCq.R')
+# source('C:/Users/Gschossmann/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementatyFunctions/deltadeltaCq.R')
 
 source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_Efficiency/qpcR_Efficiencies.R')
 source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_replAveraging.R')
 source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/qPCR_Dixon_Outlier.R')
-source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/qPCR_GeneExpressionAssay/deltadeltaCq.R')
+source('C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/Analysis Code/PCR/SupplementaryFunctions/deltadeltaCq.R')
 
 
 ####################################################################################
@@ -300,8 +297,18 @@ for(iPl in plates){
       tmpX_GOI = (tmp_eff_GOI)^(data_corrected$IC_corr_Cq[data_corrected$Animal == iA & data_corrected$Gene == iG])
       data_corrected$HKG_norm_N[data_corrected$Animal == iA & data_corrected$Gene == iG & data_corrected$Plate == iPl] = tmp_Av_HKG/tmpX_GOI
     }
+    # Calculate RefG stability
+    for (iG in HKG){
+      tmp_eff_HKG = Efficiencies$Efficiency[Efficiencies$Gene == iG & Efficiencies$Animal == iA & Efficiencies$Plate == iPl]
+      tmpX_HKG = (tmp_eff_HKG)^(data_corrected$IC_corr_Cq[data_corrected$Animal == iA & data_corrected$Gene == iG])
+      data_corrected$HKG_norm_N[data_corrected$Animal == iA & data_corrected$Gene == iG & data_corrected$Plate == iPl] = tmpX_HKG
+    }
+    
   }
 }
+
+
+
 
 data_corrected_all = data_corrected
 data_corrected = data_corrected[!(data_corrected$Gene %in% HKG),]
@@ -377,6 +384,11 @@ for(iT in 1:length(unique(data_corrected$Group))){
 #Save Corrected data
 write.csv(data_corrected, paste(savepath,paste(part, 'data_corrected.csv', sep='_'),sep='/'))
 
+write.csv(data_summary, paste(savepath,paste(part, 'data_summary.csv', sep='_'),sep='/'))
+
+write.csv(data_summaryDeltaDelta, paste(savepath,paste(part, 'data_summaryDeltaDelta.csv', sep='_'),sep='/'))
+
+
 # #final data, corrected to IR (only treatment groups)
 # write.xlsx(data_corrected, paste(savepath,'data_corrected_Norm_to_IR_part.xlsx',sep='/'))
 # 
@@ -391,4 +403,38 @@ write.csv(data_corrected, paste(savepath,paste(part, 'data_corrected.csv', sep='
 # 
 # #final descriptive summary
 # write.xlsx(data_summary, paste(savepath,'data_corrected_summary.xlsx',sep='/'))
+
+
+
+
+################################################# Chain all data_corrected together and summarize
+#...after all parts have been saved separately:
+readpathData = 'C:/Users/lena_/Dropbox/studies/Osnabrück/Universität/Bachelorarbeit_DroBo/experiments/PCR/Mito_gene_expression/analysis/R_analysis'
+x1=read.csv(paste(readpathData, 'part1_data_corrected.csv', sep='/'))
+x2=read.csv(paste(readpathData, 'part2_data_corrected.csv', sep='/'))
+x3=read.csv(paste(readpathData, 'part3_data_corrected.csv', sep='/'))
+data_corrected_tot = rbind(x1, rbind(x2, x3))
+data_corrected_tot = data_corrected_tot[,2:ncol(data_corrected_tot)]
+write.xlsx(data_corrected_tot, paste(savepath,'data_corrected_ALL.xlsx',sep='/'))
+
+allGOI = unique(data_corrected_tot$Gene)
+
+#summary
+data_summary_tot = data.frame(matrix(ncol=4, nrow=3*length(allGOI))) #Mean and SEM per GOI per Group
+colnames(data_summary_tot) = c('Group', 'Gene', 'Mean', 'SEM')
+
+cnt=1
+for(iT in 1:length(unique(data_corrected_tot$Group))){
+  
+  for(iG in 1:length(allGOI)){
+    tmpMatrix = data_corrected_tot$Group == unique(data_corrected_tot$Group)[iT] & data_corrected_tot$Gene == allGOI[iG]
+    data_summary_tot$Group[cnt] = unique(data_corrected_tot$Group)[iT]
+    data_summary_tot$Gene[cnt] = as.character(allGOI[iG])
+    data_summary_tot$Mean[cnt] = mean(data_corrected_tot$Rel_quantity[tmpMatrix])
+    data_summary_tot$SD[cnt] = sd(data_corrected_tot$Rel_quantity[tmpMatrix])
+    data_summary_tot$SEM[cnt] = sd(data_corrected_tot$Rel_quantity[tmpMatrix])/sqrt(sum(tmpMatrix))
+    cnt=cnt+1
+  }
+}
+
 
